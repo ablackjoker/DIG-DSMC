@@ -1,0 +1,120 @@
+# DIG-appolo
+
+DSMC/NS parallel solver case for the Apollo mesh.
+
+## Basic Requirements
+
+To compile and run this code on another machine, the basic requirements are:
+
+- Linux or Linux-based HPC environment
+- MPI runtime and MPI compiler wrapper, such as Intel MPI, OpenMPI, or MPICH
+- C++11-compatible compiler
+- METIS library and headers
+- GKlib library and headers
+- Matching Fluent CAS mesh file
+- Enough CPU cores and memory for the selected mesh and particle count
+
+## Build Notes
+
+The current `Makefile` is configured for an Intel/HPC environment:
+
+```makefile
+CC := mpiicpc
+CFLAGS := -O3 -xSKYLAKE-AVX512 -qopt-zmm-usage=high
+```
+
+On a different machine, update the compiler and dependency paths in `Makefile`:
+
+```makefile
+MPI_INCLUDE :=
+MPI_LIB :=
+METIS_INCLUDE :=
+METIS_LIB :=
+GK_INCLUDE :=
+GK_LIB :=
+```
+
+For a more portable first build, the compiler settings may be changed to something like:
+
+```makefile
+CC := mpic++
+CFLAGS := -O3 -std=c++11
+```
+
+Then build with:
+
+```bash
+make
+```
+
+## Mesh And Case Settings
+
+The default mesh path is:
+
+```text
+./mesh/3dapollo372500.cas
+```
+
+The current code has the mesh cell count hard-coded in `src/meshImport.h`:
+
+```cpp
+const int NCELL = 372500;
+```
+
+If a different mesh is used, make sure this value matches the mesh cell count.
+
+## Basic Case Parameters
+
+The current Apollo case is configured in the source code with the following
+basic settings:
+
+| Quantity | Value |
+| --- | --- |
+| Freestream Mach number | `Ma = 5` |
+| Knudsen number | `Kn = 0.01` |
+| Angle of attack | `30 deg` |
+| Reference length | `L0 = 3.912 m` |
+| Freestream temperature | `T_in = 142.2 K` |
+| Wall temperature | `T_w = 300 K` |
+| Reference temperature | `T_ref = 273.15 K` |
+| Mesh cell count | `NCELL = 372500` |
+| Initial particles per cell | `Npinitial = 100` |
+| Approximate initial particle count | `37250000` |
+| Total DSMC/DIG evolution steps | `NTOTAL = 10000` |
+| Exponential averaging startup steps | `NSCHEME = 2000` |
+| Sampling start step | `NSS = 5000` |
+
+## Run
+
+`SubmitJob.lsf` is not required for running the code. If MPI is available and
+the working directory and paths are set correctly, the executable can be run
+directly with `mpirun`.
+
+Run from the repository root, or update the relative mesh/output paths in the
+code and run script accordingly:
+
+```bash
+mpirun -np 160 ./main_mpiDSMC_ht > log.txt
+```
+
+`SubmitJob.lsf` is only an optional example for an LSF cluster. Before using it
+on another system, update the queue name, core count, module loads, executable
+path, and any mesh/output paths to match that machine:
+
+```bash
+bsub < SubmitJob.lsf
+```
+
+At least two MPI processes are required. Rank 0 reads and distributes the mesh, and the compute ranks are `size - 1`.
+
+## Output Directories
+
+The following directories are expected by the code and are tracked with `.gitkeep` files:
+
+```text
+cellDistribute/
+nsTemp/
+statisticResults/
+```
+
+DSMC output is written mainly to `statisticResults/`, and NS output is written to `nsTemp/`.
