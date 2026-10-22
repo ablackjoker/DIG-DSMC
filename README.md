@@ -1,6 +1,6 @@
-# DIG-DSMC equilibrium-box benchmark
+# DIG-DSMC
 
-A lightweight DIG-augmented DSMC case: an 8 x 8 x 8 closed box with six stationary isothermal diffuse walls, run with four MPI processes.
+**DIG-DSMC equilibrium-box benchmark**: a lightweight DIG-augmented DSMC case: an 8 x 8 x 8 closed box with six stationary isothermal diffuse walls, run with four MPI processes.
 
 The original Apollo case, mesh, and supercomputer build/job scripts are preserved on the `apollo-original` branch; `master` contains this lightweight benchmark.
 
