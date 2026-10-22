@@ -1,7 +1,3 @@
-/*
- * DSMC face split selection and compact topology capture.
- */
-
 #include "meshImport.h"
 
 #include <cfloat>
@@ -9,51 +5,31 @@
 
 namespace
 {
-/*
- * point3_sub: performs one solver support operation.
- * Params: a, b, r; returns: none.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 static void point3_sub(const double* a, const double* b, double r[3])
 {
     r[0] = a[0] - b[0];
     r[1] = a[1] - b[1];
     r[2] = a[2] - b[2];
 }
-/*
- * point3_dot: performs one solver support operation.
- * Params: a, b; returns: computed scalar.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 static double point3_dot(const double a[3], const double b[3])
 {
     return a[0]*b[0] + a[1]*b[1] + a[2]*b[2];
 }
-/*
- * point3_cross: performs one solver support operation.
- * Params: a, b, r; returns: none.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 static void point3_cross(const double a[3], const double b[3], double r[3])
 {
     r[0] = a[1]*b[2] - a[2]*b[1];
     r[1] = a[2]*b[0] - a[0]*b[2];
     r[2] = a[0]*b[1] - a[1]*b[0];
 }
-/*
- * point3_norm: performs one solver support operation.
- * Params: a; returns: computed scalar.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 static double point3_norm(const double a[3])
 {
     return std::sqrt(point3_dot(a, a));
 }
-/*
- * load_quad_face_points_global: updates partition ownership or load data.
- * Params: face, mesh, P; returns: success or decision flag.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 static bool load_quad_face_points_global(const DsmcEdge& face,
                                          const meshImport& mesh,
                                          double P[4][3])
@@ -81,11 +57,7 @@ static bool load_quad_face_points_global(const DsmcEdge& face,
     }
     return true;
 }
-/*
- * triangle_normal_from_quad_points: works with mesh topology or geometric intersections.
- * Params: P, tri, normal, normalLen; returns: success or decision flag.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 static bool triangle_normal_from_quad_points(const double P[4][3],
                                              const int tri[3],
                                              double normal[3],
@@ -98,11 +70,7 @@ static bool triangle_normal_from_quad_points(const double P[4][3],
     normalLen = point3_norm(normal);
     return std::isfinite(normalLen) && normalLen > 1.0e-30;
 }
-/*
- * quad_split_quality_score: performs one solver support operation.
- * Params: P, tri0, tri1; returns: computed scalar.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 static double quad_split_quality_score(const double P[4][3],
                                        const int tri0[3],
                                        const int tri1[3])
@@ -118,11 +86,7 @@ static double quad_split_quality_score(const double P[4][3],
     const double areaPenalty = std::fabs(len0 - len1) / (len0 + len1);
     return normalPenalty * 16.0 + areaPenalty;
 }
-/*
- * choose_face_level_quad_split_tag: works with mesh topology or geometric intersections.
- * Params: face, mesh, tag; returns: success or decision flag.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 static bool choose_face_level_quad_split_tag(const DsmcEdge& face,
                                              const meshImport& mesh,
                                              unsigned char& tag)
@@ -147,11 +111,6 @@ static bool choose_face_level_quad_split_tag(const DsmcEdge& face,
 }
 } 
 
-/*
- * build_face_split_tags_from_faces: works with mesh topology or geometric intersections.
- * Params: none; returns: none.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void meshImport::build_face_split_tags_from_faces()
 {
     const int nFace = (int)Dsmcedges.size();
@@ -167,11 +126,6 @@ void meshImport::build_face_split_tags_from_faces()
     }
 }
 
-/*
- * rootCaptureGlobalDsmcAndReleaseMesh: performs one solver support operation.
- * Params: none; returns: none.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void meshImport::rootCaptureGlobalDsmcAndReleaseMesh()
 {
     Dsmccells.resize((size_t)this->Ncell);

@@ -1,0 +1,161 @@
+{
+  "schema_version": 2,
+  "_description": "Read by the Python checker and plotter; this file does not configure the C++ solver.",
+  "validation_scope": "Kn=0.1 equilibrium-box functional and statistical regression check with the Kn-cell upper-bound filter disabled. It does not certify full NS convergence, non-equilibrium accuracy, or acceleration performance.",
+  "configuration": {
+    "_description": "Case settings expected by the checker; solver parameters are compiled in the C++ source.",
+    "kn": 0.1,
+    "mach": 0.0,
+    "cells": 512,
+    "temperature_K": 273.15,
+    "wall_temperature_K": 273.15,
+    "total_dsmc_steps": 3000,
+    "sampling_start": 400,
+    "dsmc_interval": 500,
+    "ns_max_iterations": 200,
+    "default_seed": 20261015,
+    "validated_world_ranks": [
+      4
+    ],
+    "initial_particles_per_cell": 30,
+    "kn_cell_upper_bound_enabled": false
+  },
+  "expected_equilibrium": {
+    "_description": "Theoretical equilibrium values; normalized temperatures equal 1 at 273.15 K.",
+    "rho_mean": 1.0,
+    "Tt_mean": 1.0,
+    "Tr_mean": 1.0,
+    "Tt_mean_K": 273.15,
+    "Tr_mean_K": 273.15,
+    "u_mean_x": 0.0,
+    "u_mean_y": 0.0,
+    "u_mean_z": 0.0
+  },
+  "reference_run": "runs/cavity_kn01_reference",
+  "observed_reference_metrics": {
+    "_description": "Measured fixed-seed results; density, velocity and unmarked temperature fields are normalized, while *_K temperatures use kelvin.",
+    "cells": 512,
+    "rho_mean": 0.99952420703125,
+    "Tt_mean": 0.999375486328125,
+    "Tr_mean": 0.99913980859375,
+    "rho_rms_error": 0.009109760182465355,
+    "Tt_rms_error": 0.006230568851155113,
+    "Tr_rms_error": 0.007867998474834624,
+    "velocity_rms": 0.009080217936433311,
+    "nonpositive_rho_or_T": 0,
+    "nonfinite_values": 0,
+    "rho_range": [
+      0.970436,
+      1.03003
+    ],
+    "Tt_range": [
+      0.979396,
+      1.02333
+    ],
+    "Tr_range": [
+      0.975891,
+      1.02255
+    ],
+    "u_mean_x": -0.0001477754033203125,
+    "u_mean_y": -9.412656132812501e-05,
+    "u_mean_z": 3.0005891601562517e-05,
+    "Tt_mean_K": 272.9794140905273,
+    "Tr_mean_K": 272.9150387173828
+  },
+  "acceptance": {
+    "_description": "The checker applies lower and upper bounds; +/-0.5 percent limits global means, not every cell.",
+    "metrics": {
+      "rho_mean": {
+        "lower": 0.995,
+        "upper": 1.005,
+        "target": 1.0,
+        "kind": "two_sided",
+        "tolerance_or_upper_limit": 0.005
+      },
+      "Tt_mean": {
+        "lower": 0.995,
+        "upper": 1.005,
+        "target": 1.0,
+        "kind": "two_sided",
+        "tolerance_or_upper_limit": 0.005
+      },
+      "Tr_mean": {
+        "lower": 0.995,
+        "upper": 1.005,
+        "target": 1.0,
+        "kind": "two_sided",
+        "tolerance_or_upper_limit": 0.005
+      },
+      "u_mean_x": {
+        "lower": -0.001,
+        "upper": 0.001,
+        "target": 0.0,
+        "kind": "two_sided",
+        "tolerance_or_upper_limit": 0.001
+      },
+      "u_mean_y": {
+        "lower": -0.001,
+        "upper": 0.001,
+        "target": 0.0,
+        "kind": "two_sided",
+        "tolerance_or_upper_limit": 0.001
+      },
+      "u_mean_z": {
+        "lower": -0.001,
+        "upper": 0.001,
+        "target": 0.0,
+        "kind": "two_sided",
+        "tolerance_or_upper_limit": 0.001
+      },
+      "rho_rms_error": {
+        "lower": 0.0,
+        "upper": 0.015,
+        "target": 0.0,
+        "kind": "upper",
+        "tolerance_or_upper_limit": 0.015
+      },
+      "Tt_rms_error": {
+        "lower": 0.0,
+        "upper": 0.015,
+        "target": 0.0,
+        "kind": "upper",
+        "tolerance_or_upper_limit": 0.015
+      },
+      "Tr_rms_error": {
+        "lower": 0.0,
+        "upper": 0.015,
+        "target": 0.0,
+        "kind": "upper",
+        "tolerance_or_upper_limit": 0.015
+      },
+      "velocity_rms": {
+        "lower": 0.0,
+        "upper": 0.015,
+        "target": 0.0,
+        "kind": "upper",
+        "tolerance_or_upper_limit": 0.015
+      }
+    },
+    "structural_rules": [
+      "512 equal-volume cells; all required fields complete and finite; density and both temperatures positive.",
+      "Fixed base seed 20261015 and four MPI processes.",
+      "Six DIG cycles at steps 500 through 3000; all 512 cells accepted for macro/high-order transfer and particle feedback.",
+      "Kn-cell upper-bound filter disabled in all six coupling summaries."
+    ],
+    "tolerance_basis": "Engineering regression limits: +/-0.5 percent for each global mean density and temperature; absolute 0.001 for each mean normalized velocity component; 0.015 for spatial RMS density/temperature error and normalized speed. These are not confidence intervals or bounds on every cell.",
+    "interpretation": "The supplied fixed-seed run is the reference for this configuration."
+  },
+  "metric_definitions": {
+    "rho_mean": "Mean density divided by the reference density.",
+    "Tt_mean": "Mean translational temperature divided by 273.15 K.",
+    "Tr_mean": "Mean rotational temperature divided by 273.15 K.",
+    "u_mean_x_y_z": "Mean normalized macroscopic velocity components; their zero target requires absolute tolerances.",
+    "density_temperature_means": "Arithmetic means over 512 equal-volume cells, equivalent to volume-weighted means. Temperatures in the DAT file are divided by 273.15 K.",
+    "rho_T_RMS": "sqrt(mean((normalized_value-1)^2)) over cells.",
+    "velocity": "DAT macroscopic velocity divided by sqrt(gamma*kB*T_in/p_mass), with gamma=1.4; velocity_rms=sqrt(mean(ux^2+uy^2+uz^2)).",
+    "output_order": "Output on a DIG step precedes that step particle correction; log evidence separately verifies the sixth correction."
+  },
+  "_provenance_note": "Hashes identify the supplied mesh and final reference field; they are not numerical tolerances.",
+  "mesh_sha256": "300877ec8c10501277b29699bfb5f1919eeb1d3c5b7ca4b7c5cc1b6a6f57266d",
+  "reference_field_sha256": "c44d7f073b36d2f0cf020866fe0c116ee6690565c93984539b7b4291e087767b"
+}

@@ -1,37 +1,9 @@
-/*
- * Fluent CAS parsing, mesh preprocessing, partition data, and writers.
- */
-
 #include "meshImport.h"
 
-/*
- * meshImport: initializes meshImport state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 meshImport::meshImport()
 {
 }
 
-/*
- * meshImport: initializes meshImport state.
- * Params: filePath, nParts, sfactor; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 meshImport::meshImport(const char *filePath, idx_t nParts, double sfactor)
 {
     this->ScaleFactor = sfactor;
@@ -41,18 +13,6 @@ meshImport::meshImport(const char *filePath, idx_t nParts, double sfactor)
     }
 }
 
-/*
- * meshImport: initializes meshImport state.
- * Params: filePath, tag, nParts, sfactor; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 meshImport::meshImport(const char *filePath, bool tag, idx_t nParts, double sfactor)
 {
     this->iNface = this->changeFluent(filePath, tag);
@@ -63,18 +23,6 @@ meshImport::meshImport(const char *filePath, bool tag, idx_t nParts, double sfac
     }
 }
 
-/*
- * ~meshImport: releases owned buffers and MPI helper state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 meshImport::~meshImport()
 {
     if (this->TAG != NULL)
@@ -126,18 +74,6 @@ meshImport::~meshImport()
     }
 }
 
-/*
- * ensureReMeshIndexIdentity: prepares derived solver state.
- * Params: includeReverse; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void meshImport::ensureReMeshIndexIdentity(bool includeReverse)
 {
     const int ncell = this->Ncell;
@@ -162,18 +98,6 @@ void meshImport::ensureReMeshIndexIdentity(bool includeReverse)
     }
 }
 
-/*
- * readCAS: parses mesh or configuration input.
- * Params: filePath; returns: success or decision flag.
- * Flow:
- *   - decode the input record.
- *   - fill mesh arrays.
- *   - report parse status.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool meshImport::readCAS(const char *filePath)
 {
     ifstream infile;
@@ -199,18 +123,6 @@ bool meshImport::readCAS(const char *filePath)
     return true;
 }
 
-/*
- * classification: parses mesh or configuration input.
- * Params: str, sst, infile, commentLoc; returns: none.
- * Flow:
- *   - decode the input record.
- *   - fill mesh arrays.
- *   - report parse status.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void meshImport::classification(string str, stringstream &sst, ifstream &infile, stringstream &commentLoc)
 {
     string s = "";
@@ -249,18 +161,6 @@ void meshImport::classification(string str, stringstream &sst, ifstream &infile,
     }
 }
 
-/*
- * readNodes: parses mesh or configuration input.
- * Params: sst, infile; returns: success or decision flag.
- * Flow:
- *   - decode the input record.
- *   - fill mesh arrays.
- *   - report parse status.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool meshImport::readNodes(stringstream &sst, ifstream &infile)
 {
     string str = "", st = "";
@@ -296,18 +196,6 @@ bool meshImport::readNodes(stringstream &sst, ifstream &infile)
     return true;
 }
 
-/*
- * readCells: parses mesh or configuration input.
- * Params: sst, infile; returns: success or decision flag.
- * Flow:
- *   - decode the input record.
- *   - fill mesh arrays.
- *   - report parse status.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool meshImport::readCells(stringstream &sst, ifstream &infile)
 {
     string str = "", st = "";
@@ -365,18 +253,6 @@ bool meshImport::readCells(stringstream &sst, ifstream &infile)
     return true;
 }
 
-/*
- * readFaces: parses mesh or configuration input.
- * Params: sst, infile; returns: success or decision flag.
- * Flow:
- *   - decode the input record.
- *   - fill mesh arrays.
- *   - report parse status.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool meshImport::readFaces(stringstream &sst, ifstream &infile)
 {
     string str = "", st = "";
@@ -464,18 +340,6 @@ bool meshImport::readFaces(stringstream &sst, ifstream &infile)
     return true;
 }
 
-/*
- * readPeriodic: parses mesh or configuration input.
- * Params: sst, infile; returns: success or decision flag.
- * Flow:
- *   - decode the input record.
- *   - fill mesh arrays.
- *   - report parse status.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool meshImport::readPeriodic(stringstream &sst, ifstream &infile)
 {
     string str = "", st = "";
@@ -509,18 +373,6 @@ bool meshImport::readPeriodic(stringstream &sst, ifstream &infile)
     return true;
 }
 
-/*
- * getZoneid: performs one solver support operation.
- * Params: sst; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool meshImport::getZoneid(stringstream &sst)
 {
     string st = "", st1 = "", st2 = "", st3 = "";
@@ -538,18 +390,6 @@ bool meshImport::getZoneid(stringstream &sst)
     return true;
 }
 
-/*
- * hex2dcm: parses mesh or configuration input.
- * Params: str; returns: index, count, owner, or status value.
- * Flow:
- *   - decode the input record.
- *   - fill mesh arrays.
- *   - report parse status.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 int meshImport::hex2dcm(string str)
 {
     int len = str.size(); 
@@ -575,18 +415,6 @@ int meshImport::hex2dcm(string str)
     return num;
 }
 
-/*
- * setFaceCellNew: works with mesh topology or geometric intersections.
- * Params: none; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool meshImport::setFaceCellNew() 
 {
     int p1, p2, c0, c1, iNode;
@@ -727,18 +555,6 @@ bool meshImport::setFaceCellNew()
     return true;
 }
 
-/*
- * preprocess: performs one solver support operation.
- * Params: nParts; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool meshImport::preprocess(idx_t nParts)
 {
     this->cellXY = new mdouble *[this->Ncell];
@@ -848,18 +664,6 @@ bool meshImport::preprocess(idx_t nParts)
     return true;
 }
 
-/*
- * out2dat: writes solver fields or diagnostics.
- * Params: filePath, w, sq; returns: success or decision flag.
- * Flow:
- *   - select fields.
- *   - format by mesh order.
- *   - flush output.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool meshImport::out2dat(const char *filePath, const double w[][NCELL], const double sq[][VAR2])
 {
     int tolFacePoint = 0;
@@ -985,18 +789,6 @@ bool meshImport::out2dat(const char *filePath, const double w[][NCELL], const do
     return true;
 }
 
-/*
- * mutualMapping: performs one solver support operation.
- * Params: pl, pr, vis, len; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool meshImport::mutualMapping(int *pl, int *pr, vector<int> vis, int &len)
 {
     edge *edges = this->edges;
@@ -1020,18 +812,7 @@ bool meshImport::mutualMapping(int *pl, int *pr, vector<int> vis, int &len)
     len = temp;
     return true;
 }
-/*
- * out2Fluent_ns2: writes solver fields or diagnostics.
- * Params: filePath, qf; returns: success or decision flag.
- * Flow:
- *   - select fields.
- *   - format by mesh order.
- *   - flush output.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 bool meshImport::out2Fluent_ns2(const char *filePath, double *qf)
 {
     int cellId, cellFirstIndex, cellLastIndex;
@@ -1092,18 +873,7 @@ bool meshImport::out2Fluent_ns2(const char *filePath, double *qf)
     fout.close();
     return true;
 }
-/*
- * out2Fluent_dsmc: writes solver fields or diagnostics.
- * Params: filePath, w; returns: success or decision flag.
- * Flow:
- *   - select fields.
- *   - format by mesh order.
- *   - flush output.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 bool meshImport::out2Fluent_dsmc(const char *filePath, double *w)
 {
     int cellId, cellFirstIndex, cellLastIndex;
@@ -1181,18 +951,6 @@ bool meshImport::out2Fluent_dsmc(const char *filePath, double *w)
     return true;
 }
 
-/*
- * out2Fluent_ns6: writes solver fields or diagnostics.
- * Params: filePath, w; returns: success or decision flag.
- * Flow:
- *   - select fields.
- *   - format by mesh order.
- *   - flush output.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool meshImport::out2Fluent_ns6(const char *filePath, double *w)
 {
     int cellId, cellFirstIndex, cellLastIndex;
@@ -1237,18 +995,7 @@ bool meshImport::out2Fluent_ns6(const char *filePath, double *w)
     fout.close();
     return true;
 }
-/*
- * setMa_Kn_CFL: performs one solver support operation.
- * Params: ma, kn, cfl, cfl_psu, cfl_ns; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 void meshImport::setMa_Kn_CFL(double ma, double kn, double cfl, double cfl_psu, double cfl_ns)
 {
     this->Ma = ma;
@@ -1258,18 +1005,6 @@ void meshImport::setMa_Kn_CFL(double ma, double kn, double cfl, double cfl_psu, 
     this->cfl_ns = cfl_ns;
 }
 
-/*
- * setMeshMessage: performs one solver support operation.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void meshImport::setMeshMessage()
 {
     dr = 2, dv = 1.626, zr = 3.5, zv = 2 * zr, omega = 0.74; 
@@ -1313,9 +1048,9 @@ void meshImport::setMeshMessage()
     this->iNface = this->Nface - this->bcnumber;
     mess.iNface = this->iNface;
     double kB = 1.3806e-23,T_ref = 273.15,p_mass = 4.65e-26,p_mass_r = 0.5*p_mass;
-    double L0 = 3.912;
-    double d_ref = 4.17e-10,alpha = 1.0, Twall_ref = 300.0 / T_ref,eta = omega - 0.5;
-    double T_in = 142.2;
+    double L0 = 1.0;
+    double d_ref = 4.17e-10,alpha = 1.0, Twall_ref = 1.0,eta = omega - 0.5;
+    double T_in = 273.15;
     double v_rms = sqrt(2*kB*T_ref/p_mass);
     double v_in = sqrt(2*kB*T_in/p_mass);
     const double d_ref2 = d_ref * d_ref;
@@ -1350,18 +1085,6 @@ void meshImport::setMeshMessage()
     cout<<"the initial velocity is: "<< mess.Ma*sqrt(2/gamma)<<endl;
 }
 
-/*
- * setParticleMessage: updates particles or particle-derived state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void meshImport::setParticleMessage()
 {
     meshMessage &mess = this->mess;
@@ -1424,18 +1147,6 @@ void meshImport::setParticleMessage()
     this->calGridpar();
 }
 
-/*
- * calGridpar: performs one solver support operation.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void meshImport::calGridpar()
 {
     if (this->c_size <= 0 || this->cells == NULL || this->Ncell <= 0)
@@ -1492,18 +1203,6 @@ void meshImport::calGridpar()
     }
 }
 
-/*
- * calcMatrixInversion: works with mesh topology or geometric intersections.
- * Params: src, n, des; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool meshImport::calcMatrixInversion(double src[DIM][DIM], int n, double des[DIM][DIM])
 {
     double flag = this->calcDeterminant(src, n);
@@ -1525,18 +1224,6 @@ bool meshImport::calcMatrixInversion(double src[DIM][DIM], int n, double des[DIM
     return true;
 }
 
-/*
- * calcDeterminant: prepares derived solver state.
- * Params: arcs, n; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 double meshImport::calcDeterminant(double arcs[DIM][DIM], int n)
 {
     if (n == 1)
@@ -1568,18 +1255,6 @@ double meshImport::calcDeterminant(double arcs[DIM][DIM], int n)
     return ans;
 }
 
-/*
- * calcCofactor: prepares derived solver state.
- * Params: arcs, n, ans; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void meshImport::calcCofactor(double arcs[DIM][DIM], int n, double ans[DIM][DIM])
 {
     if (n == 1)
@@ -1609,18 +1284,6 @@ void meshImport::calcCofactor(double arcs[DIM][DIM], int n, double ans[DIM][DIM]
     }
 }
 
-/*
- * changeFluent: performs one solver support operation.
- * Params: filePath, tag; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 int meshImport::changeFluent(const char *filePath, bool tag)
 {
     if(!tag){
@@ -1664,18 +1327,7 @@ int meshImport::changeFluent(const char *filePath, bool tag)
     infile.close();
     return inface;
 }
-/*
- * metisPartition: updates partition ownership or load data.
- * Params: nParts; returns: none.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 void meshImport::metisPartition(idx_t nParts)
 {
     if(nParts <= 1){
@@ -1729,34 +1381,10 @@ void meshImport::metisPartition(idx_t nParts)
     delete[] xadj; delete[] adjncy; delete[] part;
 }
 
-/*
- * cmp2: performs one solver support operation.
- * Params: c1, c2; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool cmp2(const cellNode &c1, const cellNode &c2){
     return c1.no == c2.no ? c1.id < c2.id : c1.no < c2.no;
 }
 
-/*
- * reMesh: performs one solver support operation.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void meshImport::reMesh()
 {
     this->originalCells = vector<cell>(this->cells, this->cells + this->Ncell);

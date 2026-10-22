@@ -1,6 +1,4 @@
-/*
- * Root package building, halo collection, and geometry scatter.
- */
+// Partitions the initial mesh and distributes owned cells, halo cells, and geometry to compute ranks.
 
 #include "MeshPartitionTransfer3D.h"
 
@@ -23,42 +21,18 @@ namespace
     const int kGeomFaceSplitTag = 4305;
     const int kGeomNodeXyzTag = 4306;
     template <typename T>
-/*
- * partition3dDataOrNull: writes solver fields or diagnostics.
- * Params: values; returns: reference or pointer to existing state.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
     inline T *partition3dDataOrNull(std::vector<T> &values)
     {
         return values.empty() ? nullptr : values.data();
     }
     template <typename T>
-/*
- * partition3dDataOrNull: writes solver fields or diagnostics.
- * Params: values; returns: reference or pointer to existing state.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
     inline T *partition3dDataOrNull(const std::vector<T> &values)
     {
         return values.empty() ? nullptr : const_cast<T *>(values.data());
     }
-/*
- * prefixSumCounts: performs one solver support operation.
- * Params: counts, displs; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
     inline void prefixSumCounts(const std::vector<int> &counts, std::vector<int> &displs)
     {
         displs.assign(counts.size(), 0);
@@ -67,15 +41,6 @@ namespace
     }
 }
 
-/*
- * MeshPartitionTransfer3D: initializes MeshPartitionTransfer3D state.
- * Params: mesh, partinit, mpass, mpiCtx; returns: none.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 MeshPartitionTransfer3D::MeshPartitionTransfer3D(meshImport *mesh,
                                                  MeshparticalInitial *partinit,
                                                  MessagePassing *mpass,
@@ -84,15 +49,6 @@ MeshPartitionTransfer3D::MeshPartitionTransfer3D(meshImport *mesh,
 {
 }
 
-/*
- * broadcastMeshMessage: moves structured data through MPI.
- * Params: mess; returns: success or decision flag.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::broadcastMeshMessage(meshMessage &mess) const
 {
     if (m_mpass == nullptr || m_mpi == nullptr) return false;
@@ -103,15 +59,6 @@ bool MeshPartitionTransfer3D::broadcastMeshMessage(meshMessage &mess) const
     return rc == MPI_SUCCESS;
 }
 
-/*
- * initialPartitionAndDistribute: updates partition ownership or load data.
- * Params: haloRings; returns: success or decision flag.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::initialPartitionAndDistribute(int haloRings)
 {
     if (m_partinit == nullptr || m_mpi == nullptr) return false;
@@ -129,15 +76,6 @@ bool MeshPartitionTransfer3D::initialPartitionAndDistribute(int haloRings)
     return distributeGeometryByOwners(m_partinit->partitionState, haloRings);
 }
 
-/*
- * distributeGeometryByOwners: updates partition ownership or load data.
- * Params: state, haloRings; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::distributeGeometryByOwners(const PartitionState3D &state, int haloRings)
 {
     if (m_partinit == nullptr || m_mpass == nullptr || m_mpi == nullptr) return false;
@@ -187,15 +125,6 @@ bool MeshPartitionTransfer3D::distributeGeometryByOwners(const PartitionState3D 
     return failInt == 0;
 }
 
-/*
- * takeLocalGeometry: works with mesh topology or geometric intersections.
- * Params: none; returns: LocalGeometry3D.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 LocalGeometry3D MeshPartitionTransfer3D::takeLocalGeometry()
 {
     LocalGeometry3D geometry;
@@ -212,15 +141,6 @@ LocalGeometry3D MeshPartitionTransfer3D::takeLocalGeometry()
     return geometry;
 }
 
-/*
- * installLocalGeometryTo: works with mesh topology or geometric intersections.
- * Params: process; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::installLocalGeometryTo(ProcessDSMC &process)
 {
     if (m_partinit == nullptr) return false;
@@ -228,15 +148,6 @@ bool MeshPartitionTransfer3D::installLocalGeometryTo(ProcessDSMC &process)
     return true;
 }
 
-/*
- * broadcastInitialParticleCounts: moves structured data through MPI.
- * Params: npcByCell; returns: success or decision flag.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::broadcastInitialParticleCounts(std::vector<int> &npcByCell) const
 {
     if (m_partinit == nullptr || m_mpi == nullptr) return false;
@@ -250,43 +161,16 @@ bool MeshPartitionTransfer3D::broadcastInitialParticleCounts(std::vector<int> &n
     return MPI_Bcast(npcByCell.data(), m_partinit->mess.Ncell, MPI_INT, 0, m_mpi->comm) == MPI_SUCCESS;
 }
 
-/*
- * isRoot: performs one solver support operation.
- * Params: none; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::isRoot() const
 {
     return m_mpi != nullptr && m_mpi->root();
 }
 
-/*
- * worldFromCal: performs one solver support operation.
- * Params: calRank; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 int MeshPartitionTransfer3D::worldFromCal(int calRank) const
 {
     return calRank + 1;
 }
 
-/*
- * initialPartitionRoot: updates partition ownership or load data.
- * Params: rankCellAll; returns: success or decision flag.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::initialPartitionRoot(std::vector<int> &rankCellAll) const
 {
     if (m_mesh == nullptr || m_partinit == nullptr || m_mpi == nullptr) return false;
@@ -299,15 +183,6 @@ bool MeshPartitionTransfer3D::initialPartitionRoot(std::vector<int> &rankCellAll
     return true;
 }
 
-/*
- * syncDsmcCellOwners: updates partition ownership or load data.
- * Params: rankCellAll; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MeshPartitionTransfer3D::syncDsmcCellOwners(const std::vector<int> &rankCellAll) const
 {
     if (m_mesh == nullptr) return;
@@ -316,15 +191,6 @@ void MeshPartitionTransfer3D::syncDsmcCellOwners(const std::vector<int> &rankCel
         m_mesh->Dsmccells[(std::size_t)i].no = rankCellAll[(std::size_t)i];
 }
 
-/*
- * restoreOriginalMesh: performs one solver support operation.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MeshPartitionTransfer3D::restoreOriginalMesh() const
 {
     if (m_mesh == nullptr || m_partinit == nullptr) return;
@@ -342,15 +208,6 @@ void MeshPartitionTransfer3D::restoreOriginalMesh() const
     }
 }
 
-/*
- * initializeCounts: prepares derived solver state.
- * Params: buffers; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MeshPartitionTransfer3D::initializeCounts(RootScatterBuffers &buffers) const
 {
     const std::size_t nworld = (m_mpi == nullptr) ? 0u : (std::size_t)m_mpi->size;
@@ -360,15 +217,6 @@ void MeshPartitionTransfer3D::initializeCounts(RootScatterBuffers &buffers) cons
     buffers.xyzCounts.assign(nworld, 0);
 }
 
-/*
- * appendPackageToRootBuffers: moves structured data through MPI.
- * Params: worldRank, package, buffers; returns: none.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MeshPartitionTransfer3D::appendPackageToRootBuffers(int worldRank,
                                                          const MeshPartitionPackage3D &package,
                                                          RootScatterBuffers &buffers) const
@@ -385,15 +233,6 @@ void MeshPartitionTransfer3D::appendPackageToRootBuffers(int worldRank,
     buffers.nodeXyz.insert(buffers.nodeXyz.end(), package.nodeXyz.begin(), package.nodeXyz.end());
 }
 
-/*
- * resizeLocalGeometryStorage: works with mesh topology or geometric intersections.
- * Params: myNcell, myOwnedNcell, myNface, myNxyz; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MeshPartitionTransfer3D::resizeLocalGeometryStorage(int myNcell,
                                                          int myOwnedNcell,
                                                          int myNface,
@@ -410,15 +249,6 @@ void MeshPartitionTransfer3D::resizeLocalGeometryStorage(int myNcell,
     m_partinit->face_gids.assign((std::size_t)myNface, 0);
 }
 
-/*
- * installPackageLocal: moves structured data through MPI.
- * Params: package; returns: success or decision flag.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::installPackageLocal(const MeshPartitionPackage3D &package) const
 {
     if (m_partinit == nullptr) return false;
@@ -437,15 +267,6 @@ bool MeshPartitionTransfer3D::installPackageLocal(const MeshPartitionPackage3D &
     return true;
 }
 
-/*
- * sendPackageToWorld: moves structured data through MPI.
- * Params: worldRank, package, mpiCell, mpiEdge; returns: success or decision flag.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::sendPackageToWorld(int worldRank,
                                                  const MeshPartitionPackage3D &package,
                                                  MPI_Datatype mpiCell,
@@ -513,15 +334,6 @@ bool MeshPartitionTransfer3D::sendPackageToWorld(int worldRank,
     return true;
 }
 
-/*
- * recvPackageFromRoot: moves structured data through MPI.
- * Params: mpiCell, mpiEdge; returns: success or decision flag.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::recvPackageFromRoot(MPI_Datatype mpiCell,
                                                   MPI_Datatype mpiEdge) const
 {
@@ -581,15 +393,6 @@ bool MeshPartitionTransfer3D::recvPackageFromRoot(MPI_Datatype mpiCell,
     return true;
 }
 
-/*
- * buildRootBuffers: performs one solver support operation.
- * Params: state, haloRings, buffers; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::buildRootBuffers(const PartitionState3D &state,
                                                int haloRings,
                                                RootScatterBuffers &buffers) const
@@ -612,15 +415,6 @@ bool MeshPartitionTransfer3D::buildRootBuffers(const PartitionState3D &state,
     return true;
 }
 
-/*
- * buildOwnedHaloCells: works with mesh topology or geometric intersections.
- * Params: calRank, state, haloRings; returns: MeshPartitionTransfer3D::HaloBuildResult.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 MeshPartitionTransfer3D::HaloBuildResult MeshPartitionTransfer3D::buildOwnedHaloCells(
     int calRank,
     const PartitionState3D &state,
@@ -714,15 +508,6 @@ MeshPartitionTransfer3D::HaloBuildResult MeshPartitionTransfer3D::buildOwnedHalo
     return result;
 }
 
-/*
- * buildPackageForRank: moves structured data through MPI.
- * Params: calRank, state, haloRings, package; returns: success or decision flag.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::buildPackageForRank(int calRank,
                                                   const PartitionState3D &state,
                                                   int haloRings,
@@ -742,15 +527,6 @@ bool MeshPartitionTransfer3D::buildPackageForRank(int calRank,
     return fillPackageNodes(package);
 }
 
-/*
- * fillPackageCells: moves structured data through MPI.
- * Params: halo, package; returns: success or decision flag.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::fillPackageCells(const HaloBuildResult &halo,
                                                MeshPartitionPackage3D &package) const
 {
@@ -766,15 +542,6 @@ bool MeshPartitionTransfer3D::fillPackageCells(const HaloBuildResult &halo,
     return true;
 }
 
-/*
- * fillPackageFaces: moves structured data through MPI.
- * Params: package; returns: success or decision flag.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::fillPackageFaces(MeshPartitionPackage3D &package) const
 {
     const int globalFaceCount = std::max(m_partinit->mess.Nface, (int)m_mesh->Dsmcedges.size());
@@ -841,15 +608,6 @@ bool MeshPartitionTransfer3D::fillPackageFaces(MeshPartitionPackage3D &package) 
     return true;
 }
 
-/*
- * fillPackageNodes: moves structured data through MPI.
- * Params: package; returns: success or decision flag.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::fillPackageNodes(MeshPartitionPackage3D &package) const
 {
     const int globalNodeCount = (int)(m_mesh->localPointXY.size() / 3u);
@@ -914,15 +672,6 @@ bool MeshPartitionTransfer3D::fillPackageNodes(MeshPartitionPackage3D &package) 
     return true;
 }
 
-/*
- * reportHaloAdjacencyMisses: updates partition ownership or load data.
- * Params: calRank, state, haloRings, halo; returns: none.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MeshPartitionTransfer3D::reportHaloAdjacencyMisses(int calRank,
                                                         const PartitionState3D &state,
                                                         int haloRings,
@@ -998,15 +747,6 @@ void MeshPartitionTransfer3D::reportHaloAdjacencyMisses(int calRank,
     }
 }
 
-/*
- * scatterCounts: moves structured data through MPI.
- * Params: buffers, myNcell, myOwnedNcell, myNface, myNxyz; returns: success or decision flag.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::scatterCounts(const RootScatterBuffers &buffers,
                                             int &myNcell,
                                             int &myOwnedNcell,
@@ -1028,15 +768,6 @@ bool MeshPartitionTransfer3D::scatterCounts(const RootScatterBuffers &buffers,
     return true;
 }
 
-/*
- * scatterGeometry: moves structured data through MPI.
- * Params: buffers, mpiCell, mpiEdge, myNcell, myNface, myNxyz, localCells, cells, faceGids, edges, faceSplitTags, localPointXyz; returns: success or decision flag.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MeshPartitionTransfer3D::scatterGeometry(const RootScatterBuffers &buffers,
                                               MPI_Datatype mpiCell,
                                               MPI_Datatype mpiEdge,
@@ -1101,15 +832,6 @@ bool MeshPartitionTransfer3D::scatterGeometry(const RootScatterBuffers &buffers,
     return true;
 }
 
-/*
- * rebuildInitialMaps: prepares derived solver state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MeshPartitionTransfer3D::rebuildInitialMaps() const
 {
     m_partinit->gid2local.clear();

@@ -1,1 +1,13 @@
 .codex_gh_auth/
+__pycache__/
+*.py[cod]
+/obj/
+/main_mpiDSMC_ht
+/main_mpiDSMC_ht.exe
+/metis/build/
+/metis/windows/
+/metis/linux/
+/metis/sources/METIS/build/
+/benchmark_plots/
+/runs/*
+!/runs/cavity_kn01_reference/

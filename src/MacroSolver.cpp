@@ -1,34 +1,12 @@
-/*
- * Finite-volume NS/G13 setup, fluxes, iteration, and output.
- */
+// Solves the macroscopic equations and evaluates boundary fluxes and high-order corrections.
 
 #include "MacroSolver.h"
 #include <cmath>
 
-/*
- * MacroSolver: initializes MacroSolver state.
- * Params: none; returns: none.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 MacroSolver::MacroSolver()
 {
 }
 
-/*
- * MacroSolver: initializes MacroSolver state.
- * Params: mesh, mess, mpass, mpiCtx; returns: none.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 MacroSolver::MacroSolver(meshImport *mesh, meshMessage mess, MessagePassing *mpass, const MpiContext& mpiCtx)
 {
     this->mpi = &mpiCtx;
@@ -67,16 +45,6 @@ MacroSolver::MacroSolver(meshImport *mesh, meshMessage mess, MessagePassing *mpa
     }
 }
 
-/*
- * ~MacroSolver: releases owned buffers and MPI helper state.
- * Params: none; returns: none.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 MacroSolver::~MacroSolver()
 {
     if (active())
@@ -142,16 +110,6 @@ MacroSolver::~MacroSolver()
     }
 }
 
-/*
- * scatter_counts: moves structured data through MPI.
- * Params: counts_or_null, my, comm; returns: none.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::scatter_counts(vector<int> counts_or_null,int& my, MPI_Comm comm) {
     if (root()) {
         MPI_Scatter(counts_or_null.data(), 1, MPI_INT, &my, 1, MPI_INT, 0, comm);
@@ -160,16 +118,6 @@ void MacroSolver::scatter_counts(vector<int> counts_or_null,int& my, MPI_Comm co
     }
 }
 
-/*
- * dyparcells: works with mesh topology or geometric intersections.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::dyparcells()
 {
     if(this->NsreMeIndex2 == NULL)
@@ -205,16 +153,6 @@ void MacroSolver::dyparcells()
     }   
 }
 
-/*
- * cell_cell_initial: works with mesh topology or geometric intersections.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::cell_cell_initial()
 {
     MPI_Datatype mycellMessage;
@@ -280,30 +218,10 @@ void MacroSolver::cell_cell_initial()
     MPI_Barrier(comm);
 }
 
-/*
- * cmp4: performs one solver support operation.
- * Params: c1, c2; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool cmp4(const fNode &c1, const fNode &c2){
     return c1.no == c2.no ? c1.fid < c2.fid : c1.no < c2.no;
 }
 
-/*
- * edge_cell_initial: works with mesh topology or geometric intersections.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::edge_cell_initial()
 {
     MPI_Datatype myedgeMessage;
@@ -552,16 +470,6 @@ void MacroSolver::edge_cell_initial()
     MPI_Barrier(MPI_COMM_WORLD);
 }
 
-/*
- * mallocSpace: performs one solver support operation.
- * Params: none; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::mallocSpace()
 {
     int ncell = this->Ncell, nface = this->Nface, var = this->var;
@@ -596,16 +504,6 @@ bool MacroSolver::mallocSpace()
     return true;
 }
 
-/*
- * bcClassification: parses mesh or configuration input.
- * Params: none; returns: none.
- * Flow:
- *   - decode the input record.
- *   - fill mesh arrays.
- *   - report parse status.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::bcClassification()
 {
     int nface = this->Nface, enface = this->eNface;
@@ -630,16 +528,7 @@ void MacroSolver::bcClassification()
     }
 }
 
-/*
- * applyNSEG13BoundaryFluxes: applies boundary-condition behavior.
- * Params: none; returns: success or decision flag.
- * Flow:
- *   - read face states.
- *   - evaluate flux formula.
- *   - accumulate residuals.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+// Applies G13-based fluxes to the configured wall, inlet, and outlet faces.
 bool MacroSolver::applyNSEG13BoundaryFluxes()
 {
     vector<int> wallFaces;
@@ -674,16 +563,6 @@ bool MacroSolver::applyNSEG13BoundaryFluxes()
     return true;
 }
 
-/*
- * initialW: prepares derived solver state.
- * Params: none; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::initialW()
 {
     int incell = this->iNcell, ncell = this->Ncell, var = this->var;
@@ -719,16 +598,6 @@ bool MacroSolver::initialW()
     return true;
 }
 
-/*
- * initialBC: prepares derived solver state.
- * Params: none; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::initialBC()
 {
     double **qfr = this->qfr;
@@ -746,16 +615,6 @@ bool MacroSolver::initialBC()
     return true;
 }
 
-/*
- * updateBC: writes solver fields or diagnostics.
- * Params: gsisTag; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::updateBC(bool gsisTag)
 {
     if (gsisTag){
@@ -770,16 +629,7 @@ bool MacroSolver::updateBC(bool gsisTag)
     }
     return true;
 }
-/*
- * noSlipIsothermalWall2: applies boundary-condition behavior.
- * Params: qf, wallVis; returns: success or decision flag.
- * Flow:
- *   - select boundary faces.
- *   - apply the physical model.
- *   - store flux or particle effects.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 bool MacroSolver::noSlipIsothermalWall2(double *qf, vector<int> wallVis)
 {
     double var = this->var;
@@ -820,16 +670,7 @@ bool MacroSolver::noSlipIsothermalWall2(double *qf, vector<int> wallVis)
     }
     return true;
 }
-/*
- * pressureOutlet: writes solver fields or diagnostics.
- * Params: pout, wallVis; returns: success or decision flag.
- * Flow:
- *   - select fields.
- *   - format by mesh order.
- *   - flush output.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 bool MacroSolver::pressureOutlet(double pout, vector<int> wallVis)
 {
     double **fg = this->qfr;
@@ -856,16 +697,7 @@ bool MacroSolver::pressureOutlet(double pout, vector<int> wallVis)
     }
     return true;
 }
-/*
- * massWall: applies boundary-condition behavior.
- * Params: fin, t, wallVis; returns: success or decision flag.
- * Flow:
- *   - select boundary faces.
- *   - apply the physical model.
- *   - store flux or particle effects.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 bool MacroSolver::massWall(double fin, double t, vector<int> wallVis)
 {
     double **fg = this->qfr;
@@ -885,16 +717,7 @@ bool MacroSolver::massWall(double fin, double t, vector<int> wallVis)
     }
     return true;
 }
-/*
- * symmetry: applies boundary-condition behavior.
- * Params: wallVis; returns: success or decision flag.
- * Flow:
- *   - select boundary faces.
- *   - apply the physical model.
- *   - store flux or particle effects.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 bool MacroSolver::symmetry(vector<int> wallVis)
 {
     double **fg = this->qfr;
@@ -915,31 +738,13 @@ bool MacroSolver::symmetry(vector<int> wallVis)
     }
     return true;
 }
-/*
- * reconstruction: couples DSMC data with macroscopic fields.
- * Params: gsisTag; returns: success or decision flag.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 bool MacroSolver::reconstruction(bool gsisTag)
 {
     this->limiter2(gsisTag);
     return true;
 }
-/*
- * noreconstrucion: performs one solver support operation.
- * Params: gsisTag; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 bool MacroSolver::noreconstrucion(bool gsisTag)
 {
     int ncell = this->Ncell, nface = this->Nface, var = this->var;
@@ -966,16 +771,6 @@ bool MacroSolver::noreconstrucion(bool gsisTag)
     return true;
 }
 
-/*
- * calcTimestep: prepares derived solver state.
- * Params: none; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::calcTimestep()
 {
     int ncell = this->Ncell, incell = this->iNcell, var = this->var;
@@ -997,16 +792,6 @@ bool MacroSolver::calcTimestep()
     return true;
 }
 
-/*
- * rhs2Zero: performs one solver support operation.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::rhs2Zero()
 {
     int ncell = this->Ncell, incell = this->iNcell, var = this->var;
@@ -1018,16 +803,6 @@ void MacroSolver::rhs2Zero()
     }
 }
 
-/*
- * calcSource: prepares derived solver state.
- * Params: none; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::calcSource()
 {
     int ncell = this->Ncell, incell = this->iNcell, var = this->var;
@@ -1044,16 +819,6 @@ bool MacroSolver::calcSource()
     return true;
 }
 
-/*
- * convectionFlux: computes finite-volume flux terms.
- * Params: tag, gsisTag; returns: success or decision flag.
- * Flow:
- *   - read face states.
- *   - evaluate flux formula.
- *   - accumulate residuals.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::convectionFlux(int tag, bool gsisTag)
 {
     switch(tag){
@@ -1072,16 +837,6 @@ bool MacroSolver::convectionFlux(int tag, bool gsisTag)
     return true;
 }
 
-/*
- * Rusanov: computes finite-volume flux terms.
- * Params: gsisTag; returns: success or decision flag.
- * Flow:
- *   - read face states.
- *   - evaluate flux formula.
- *   - accumulate residuals.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::Rusanov(bool gsisTag)
 {
     double gamma = mess.gamma;
@@ -1152,16 +907,6 @@ bool MacroSolver::Rusanov(bool gsisTag)
     return true;
 }
 
-/*
- * viscousFlux: computes finite-volume flux terms.
- * Params: gsisTag; returns: success or decision flag.
- * Flow:
- *   - read face states.
- *   - evaluate flux formula.
- *   - accumulate residuals.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::viscousFlux(bool gsisTag)
 {
     int ncell = this->Ncell, incell = this->iNcell, var = this->var;
@@ -1230,16 +975,8 @@ bool MacroSolver::viscousFlux(bool gsisTag)
     delete[] flux;
     return true;
 }
-/*
- * implicitSolver: performs one solver support operation.
- * Params: gsisTag; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
+// Solves the implicit macroscopic update on each compute rank.
 bool MacroSolver::implicitSolver(bool gsisTag)
 {
     int maxIter = 3;
@@ -1344,16 +1081,7 @@ bool MacroSolver::implicitSolver(bool gsisTag)
     return true;
 }
 
-/*
- * nsProcess: performs one solver support operation.
- * Params: maxIter, maxError, gsisTag, ITER; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+// Iterates the macroscopic equations using DSMC corrections when GSIS is enabled.
 bool MacroSolver::nsProcess(int maxIter, double maxError, bool gsisTag, int ITER)
 {
         if (!active()) return true;
@@ -1429,16 +1157,7 @@ bool MacroSolver::nsProcess(int maxIter, double maxError, bool gsisTag, int ITER
     return true;
 }
 
-/*
- * nsProcessG13: performs one solver support operation.
- * Params: maxIter, maxError, gsisTag, ITER; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+// Computes the initial macroscopic state with the G13 boundary-flux treatment.
 bool MacroSolver::nsProcessG13(int maxIter, double maxError, bool gsisTag, int ITER)
 {
     if (active())
@@ -1501,16 +1220,6 @@ bool MacroSolver::nsProcessG13(int maxIter, double maxError, bool gsisTag, int I
     return true;
 }
 
-/*
- * AUSMPWPlus: computes finite-volume flux terms.
- * Params: gsisTag; returns: success or decision flag.
- * Flow:
- *   - read face states.
- *   - evaluate flux formula.
- *   - accumulate residuals.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::AUSMPWPlus(bool gsisTag)
 {
     int inface = this->iNface, nface = this->Nface, enface = this->eNface;
@@ -1570,16 +1279,6 @@ bool MacroSolver::AUSMPWPlus(bool gsisTag)
     return true;
 }
 
-/*
- * AUSM_Plus_Up: computes finite-volume flux terms.
- * Params: gsisTag; returns: none.
- * Flow:
- *   - read face states.
- *   - evaluate flux formula.
- *   - accumulate residuals.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::AUSM_Plus_Up(bool gsisTag)
 {
     int inface = this->iNface, nface = this->Nface, enface = this->eNface;
@@ -1639,16 +1338,6 @@ void MacroSolver::AUSM_Plus_Up(bool gsisTag)
     delete[] pe;
 }
 
-/*
- * clacSlauPsi: computes finite-volume flux terms.
- * Params: qf, psi; returns: none.
- * Flow:
- *   - read face states.
- *   - evaluate flux formula.
- *   - accumulate residuals.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::clacSlauPsi(const double *qf, double *psi)
 {
     double rho = qf[0], u = qf[1], v = qf[2], w = qf[3], ttra = qf[4], trot = qf[5];
@@ -1666,16 +1355,6 @@ void MacroSolver::clacSlauPsi(const double *qf, double *psi)
     psi[1] = qf[1]; psi[2] = qf[2]; psi[3] = qf[3];
 }
 
-/*
- * ausmPlusUpFunction: computes finite-volume flux terms.
- * Params: fl, fr, mlpt, mrnt, ps, norm; returns: none.
- * Flow:
- *   - read face states.
- *   - evaluate flux formula.
- *   - accumulate residuals.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::ausmPlusUpFunction(double *fl, double *fr, double &mlpt, double &mrnt, double &ps, const double *norm)
 {
     double mlp, mrn, plp, prn, cl ,cr, pl, pr, mal, mar, unl, unr, gamma = mess.gamma;
@@ -1713,16 +1392,6 @@ void MacroSolver::ausmPlusUpFunction(double *fl, double *fr, double &mlpt, doubl
     ps = plp * pl + prn * pr - Ku * plp * prn * (rhol + rhor) * fa * ch * (unr - unl);
 }
 
-/*
- * ausmFunction: computes finite-volume flux terms.
- * Params: fl, fr, mlpt, mrnt, ps, norm; returns: none.
- * Flow:
- *   - read face states.
- *   - evaluate flux formula.
- *   - accumulate residuals.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::ausmFunction(double *fl, double *fr, double &mlpt, double &mrnt, double &ps, const double *norm)
 {
     double mlp, mrn, Fl, Fr, w, plp, prn, cl ,cr, pl, pr, c, mal, mar, ma, unl, unr;
@@ -1747,16 +1416,7 @@ void MacroSolver::ausmFunction(double *fl, double *fr, double &mlpt, double &mrn
     }
     mlpt *= c; mrnt *= c;
 }
-/*
- * ausmF: computes finite-volume flux terms.
- * Params: p, ps, m; returns: computed scalar.
- * Flow:
- *   - read face states.
- *   - evaluate flux formula.
- *   - accumulate residuals.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 double MacroSolver::ausmF(const double &p, const double &ps, const double &m)
 {
     double f = 0;
@@ -1766,16 +1426,6 @@ double MacroSolver::ausmF(const double &p, const double &ps, const double &m)
     return f;
 }
 
-/*
- * psLeft: performs one solver support operation.
- * Params: ma; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 double MacroSolver::psLeft(const double ma)
 {
     double p = 0;
@@ -1788,16 +1438,7 @@ double MacroSolver::psLeft(const double ma)
     }
     return p;
 }
-/*
- * psRight: performs one solver support operation.
- * Params: ma; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 double MacroSolver::psRight(const double ma)
 {
     double p = 0;
@@ -1811,16 +1452,6 @@ double MacroSolver::psRight(const double ma)
     return p;
 }
 
-/*
- * msLeft: performs one solver support operation.
- * Params: ma; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 double MacroSolver::msLeft(const double ma)
 {
     double p = 0;
@@ -1833,16 +1464,7 @@ double MacroSolver::msLeft(const double ma)
     }
     return p;
 }
-/*
- * msRight: performs one solver support operation.
- * Params: ma; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 double MacroSolver::msRight(const double ma)
 {
     double p = 0;
@@ -1856,46 +1478,16 @@ double MacroSolver::msRight(const double ma)
     return p;
 }
 
-/*
- * maSplit1: performs one solver support operation.
- * Params: ma, sgn; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 double MacroSolver::maSplit1(double ma, const int &sgn)
 {
     return 0.5 * (ma + sgn * fabs(ma));
 }
 
-/*
- * maSplit2: performs one solver support operation.
- * Params: ma, sgn; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 double MacroSolver::maSplit2(double ma, const int &sgn)
 {
     return 0.25 * sgn * (ma + sgn * 1.0) * (ma + sgn * 1.0);
 }
 
-/*
- * maSplit4: performs one solver support operation.
- * Params: ma, sgn, beta; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 double MacroSolver::maSplit4(double ma, const int &sgn, const double &beta)
 {
     if(fabs(ma) >= 1.0){
@@ -1904,16 +1496,6 @@ double MacroSolver::maSplit4(double ma, const int &sgn, const double &beta)
     return this->maSplit2(ma, sgn) * (1.0 - sgn * 16.0 * beta * this->maSplit2(ma, -sgn));
 }
 
-/*
- * pSplit5: performs one solver support operation.
- * Params: ma, sgn, alpha; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 double MacroSolver::pSplit5(double ma, const int &sgn, const double &alpha)
 {
     if(fabs(ma) >= 1.0){
@@ -1922,16 +1504,6 @@ double MacroSolver::pSplit5(double ma, const int &sgn, const double &alpha)
     return this->maSplit2(ma, sgn) * ((sgn * 2 - ma) - sgn * 16.0 * alpha * ma * this->maSplit2(ma, -sgn));
 }
 
-/*
- * convectionFunction: performs one solver support operation.
- * Params: qf, Qc, enormal; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 double MacroSolver::convectionFunction(double *qf, double *Qc, double *enormal)
 {
     double rho = qf[0], u = qf[1], v = qf[2], w = qf[3], ttra= qf[4], trot = qf[5];
@@ -1945,16 +1517,6 @@ double MacroSolver::convectionFunction(double *qf, double *Qc, double *enormal)
     return un;
 }
 
-/*
- * eigen: performs one solver support operation.
- * Params: lambda; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::eigen(double *lambda)
 {
     int ncell = this->Ncell, incell = this->iNcell, var = this->var;
@@ -1984,16 +1546,6 @@ void MacroSolver::eigen(double *lambda)
     }
 }
 
-/*
- * normalFlux: computes finite-volume flux terms.
- * Params: qf, Qc, enormal; returns: success or decision flag.
- * Flow:
- *   - read face states.
- *   - evaluate flux formula.
- *   - accumulate residuals.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::normalFlux(double *qf, double *Qc, double *enormal)
 {
     double rho = qf[0], u = qf[1], v = qf[2], w = qf[3], ttra= qf[4], trot = qf[5];
@@ -2007,16 +1559,6 @@ bool MacroSolver::normalFlux(double *qf, double *Qc, double *enormal)
     return true;
 }
 
-/*
- * origin2Conservation: performs one solver support operation.
- * Params: none; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::origin2Conservation()
 {
     int ncell = this->Ncell, incell = this->iNcell, var = this->var;
@@ -2035,16 +1577,6 @@ bool MacroSolver::origin2Conservation()
     return true;
 }
 
-/*
- * conservation2Origin: performs one solver support operation.
- * Params: none; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::conservation2Origin()
 {
     int ncell = this->Ncell, incell = this->iNcell, var = this->var;
@@ -2064,16 +1596,6 @@ bool MacroSolver::conservation2Origin()
     return true;
 }
 
-/*
- * qf2Qc: performs one solver support operation.
- * Params: qf, Qc; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::qf2Qc(double *qf, double *Qc)
 {
     double dr = mess.dr, cv = mess.cv;
@@ -2088,16 +1610,6 @@ bool MacroSolver::qf2Qc(double *qf, double *Qc)
     return true;
 }
 
-/*
- * Qc2qf: performs one solver support operation.
- * Params: Qc, qf; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::Qc2qf(double *Qc, double *qf)
 {
     double dr = mess.dr, cv = mess.cv, cp = mess.cp;
@@ -2115,16 +1627,6 @@ bool MacroSolver::Qc2qf(double *Qc, double *qf)
     return true;
 }
 
-/*
- * initialParts: prepares derived solver state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::initialParts()
 {
     int ncell = this->Ncell, nface = this->Nface, var = this->var;
@@ -2187,16 +1689,6 @@ void MacroSolver::initialParts()
     }
 }
 
-/*
- * initialParallel: prepares derived solver state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::initialParallel()
 {
     int ncell = this->Ncell, nface = this->Nface, var = this->var;
@@ -2220,16 +1712,6 @@ void MacroSolver::initialParallel()
     }
 }
 
-/*
- * freeParallel: performs one solver support operation.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::freeParallel()
 {
     int size = iSize;
@@ -2238,16 +1720,6 @@ void MacroSolver::freeParallel()
     }
 }
 
-/*
- * packQfQc: moves structured data through MPI.
- * Params: none; returns: none.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::packQfQc()
 {
     int ncell = this->Ncell, nface = this->Nface, var = this->var;
@@ -2268,16 +1740,6 @@ void MacroSolver::packQfQc()
     }
 }
 
-/*
- * unPackQfQc: moves structured data through MPI.
- * Params: none; returns: none.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::unPackQfQc()
 {
     int ncell = this->Ncell, nface = this->Nface, var = this->var;
@@ -2298,16 +1760,6 @@ void MacroSolver::unPackQfQc()
     }
 }
 
-/*
- * unPackFlux: moves structured data through MPI.
- * Params: none; returns: none.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::unPackFlux()
 {
     int ncell = this->Ncell, nface = this->Nface, var = this->var;
@@ -2327,16 +1779,6 @@ void MacroSolver::unPackFlux()
     }
 }
 
-/*
- * packDeltaW: moves structured data through MPI.
- * Params: none; returns: none.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::packDeltaW()
 {
     int ncell = this->Ncell, incell = this->iNcell, var = this->var;
@@ -2352,16 +1794,6 @@ void MacroSolver::packDeltaW()
     }
 }
 
-/*
- * unPackDeltaW: moves structured data through MPI.
- * Params: none; returns: none.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::unPackDeltaW()
 {
     int ncell = this->Ncell, nface = this->Nface, var = this->var;
@@ -2377,16 +1809,6 @@ void MacroSolver::unPackDeltaW()
     }
 }
 
-/*
- * leastSquareGrad: performs one solver support operation.
- * Params: none; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::leastSquareGrad()
 {
     int ncell = this->Ncell, incell = this->iNcell, var = this->var;
@@ -2434,16 +1856,6 @@ bool MacroSolver::leastSquareGrad()
     return true;
 }
 
-/*
- * calcCellViscous: works with mesh topology or geometric intersections.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::calcCellViscous()
 {
     int ncell = this->Ncell, incell = this->iNcell, var = this->var;
@@ -2482,16 +1894,6 @@ void MacroSolver::calcCellViscous()
     }
 }
 
-/*
- * limiter: performs one solver support operation.
- * Params: gsisTag; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::limiter(bool gsisTag)
 {
     int ncell = this->Ncell, incell = this->iNcell, var = this->var;
@@ -2548,16 +1950,6 @@ bool MacroSolver::limiter(bool gsisTag)
     return true;    
 }
 
-/*
- * limiter2: performs one solver support operation.
- * Params: gsisTag; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::limiter2(bool gsisTag)
 {
     int ncell = this->Ncell, incell = this->iNcell, var = this->var;
@@ -2636,16 +2028,6 @@ bool MacroSolver::limiter2(bool gsisTag)
     return true;    
 }
 
-/*
- * cellDeepCopy: works with mesh topology or geometric intersections.
- * Params: c1, c2; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::cellDeepCopy(cell &c1, const cell &c2)
 {
     c1.num = c2.num;
@@ -2675,16 +2057,6 @@ void MacroSolver::cellDeepCopy(cell &c1, const cell &c2)
     c1.no = c2.no;
 }
 
-/*
- * edgeDeepCopy: performs one solver support operation.
- * Params: e1, e2; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::edgeDeepCopy(edge &e1, const edge &e2)
 {
     e1.no = e2.no;
@@ -2706,16 +2078,6 @@ void MacroSolver::edgeDeepCopy(edge &e1, const edge &e2)
     e1.edgeDist = e2.edgeDist;
 }
 
-/*
- * numpyDeepCopy2D: performs one solver support operation.
- * Params: m, n, A, B; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::numpyDeepCopy2D(int m, int n, double **A, double **B)
 {
     for(int i = 0; i < m; i++){
@@ -2726,16 +2088,6 @@ bool MacroSolver::numpyDeepCopy2D(int m, int n, double **A, double **B)
     return true;
 }
 
-/*
- * out2dat: writes solver fields or diagnostics.
- * Params: filename; returns: success or decision flag.
- * Flow:
- *   - select fields.
- *   - format by mesh order.
- *   - flush output.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::out2dat(const char *filename)
 {
     int ncell = mess.Ncell, var = this->var;
@@ -2758,16 +2110,6 @@ bool MacroSolver::out2dat(const char *filename)
     return true;
 }
 
-/*
- * nsout2dat: writes solver fields or diagnostics.
- * Params: istep, Q, startcell, endcell; returns: success or decision flag.
- * Flow:
- *   - select fields.
- *   - format by mesh order.
- *   - flush output.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::nsout2dat(int istep, double **Q,int startcell, int endcell)
 {
     int ncell = this->mess.Ncell, var = this->mess.var;
@@ -2818,16 +2160,6 @@ bool MacroSolver::nsout2dat(int istep, double **Q,int startcell, int endcell)
     return true;
 }
 
-/*
- * calcMaxError: prepares derived solver state.
- * Params: wt, qf; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 double MacroSolver::calcMaxError(double **wt, double **qf)
 {
     double rho = this->calcError(0, wt, qf);
@@ -2838,16 +2170,6 @@ double MacroSolver::calcMaxError(double **wt, double **qf)
     return rho;
 }
 
-/*
- * calcError: prepares derived solver state.
- * Params: i, wt, qf; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 double MacroSolver::calcError(int i, double **wt, double **qf)
 {
     int ncell = this->Ncell, incell = this->iNcell, var = this->var;
@@ -2864,16 +2186,8 @@ double MacroSolver::calcError(int i, double **wt, double **qf)
     err = sqrt(A[0] / A[1]);
     return err;
 }
-/*
- * calcCellHot: works with mesh topology or geometric intersections.
- * Params: istep; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
+// Forms high-order stress and heat-flux corrections from DSMC and NS moments.
 void MacroSolver::calcCellHot(int istep)
 {
     int ncell = this->Ncell, incell = this->iNcell, var = this->var;
@@ -2935,16 +2249,7 @@ void MacroSolver::calcCellHot(int istep)
         }
     }
 }
-/*
- * Wang: performs one solver support operation.
- * Params: umax, umin, u, g; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 double MacroSolver::Wang(const double &umax, const double &umin, const double &u, const double &g)
 {
     double uax = umax - u, uin = umin - u, ep = 0.2;
@@ -2960,16 +2265,6 @@ double MacroSolver::Wang(const double &umax, const double &umin, const double &u
     return limiter;
 }
 
-/*
- * calcG13Sigma: prepares derived solver state.
- * Params: l, gm, ds, sq; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::calcG13Sigma(int l, double *gm, double *ds, double *sq)
 {
     for(int i=0; i<VAR2; i++){
@@ -2977,16 +2272,6 @@ void MacroSolver::calcG13Sigma(int l, double *gm, double *ds, double *sq)
     }
 }
 
-/*
- * Flux_NSEG13_bcWallWithT: applies boundary-condition behavior.
- * Params: T, wallVis; returns: success or decision flag.
- * Flow:
- *   - read face states.
- *   - evaluate flux formula.
- *   - accumulate residuals.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::Flux_NSEG13_bcWallWithT(double T, vector<int> wallVis)
 {
     edge *edges = this->edges;
@@ -3041,16 +2326,6 @@ bool MacroSolver::Flux_NSEG13_bcWallWithT(double T, vector<int> wallVis)
     return true;
 }
 
-/*
- * Flux_NSEG13_inlet: applies boundary-condition behavior.
- * Params: wallVis; returns: success or decision flag.
- * Flow:
- *   - read face states.
- *   - evaluate flux formula.
- *   - accumulate residuals.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::Flux_NSEG13_inlet(vector<int> wallVis)
 {
     edge *edges = this->edges;
@@ -3101,16 +2376,6 @@ bool MacroSolver::Flux_NSEG13_inlet(vector<int> wallVis)
     return true;
 }
 
-/*
- * Flux_NSEG13_outlet: writes solver fields or diagnostics.
- * Params: wallVis; returns: success or decision flag.
- * Flow:
- *   - select fields.
- *   - format by mesh order.
- *   - flush output.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool MacroSolver::Flux_NSEG13_outlet(vector<int> wallVis)
 {
     edge *edges = this->edges;
@@ -3158,16 +2423,7 @@ bool MacroSolver::Flux_NSEG13_outlet(vector<int> wallVis)
     delete[] gm; delete[] ds; delete[] A;
     return true;
 }
-/*
- * calcFlux_IFV2: computes finite-volume flux terms.
- * Params: WI, sq, enormal, IFv, a, tag, index; returns: success or decision flag.
- * Flow:
- *   - read face states.
- *   - evaluate flux formula.
- *   - accumulate residuals.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 bool MacroSolver::calcFlux_IFV2(double *WI, double *sq, double *enormal, double *IFv, double *a, bool tag, int index)
 {
     if(this->tVector == NULL){
@@ -3292,16 +2548,6 @@ bool MacroSolver::calcFlux_IFV2(double *WI, double *sq, double *enormal, double 
     return true;
 }
 
-/*
- * CalculateTangentialVector: works with mesh topology or geometric intersections.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void MacroSolver::CalculateTangentialVector()
 {
     int ncell = this->Ncell, incell = this->iNcell, var = this->var;

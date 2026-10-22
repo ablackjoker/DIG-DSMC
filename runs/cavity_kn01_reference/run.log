@@ -1,0 +1,253 @@
+Random seed: 20261015, MPI ranks: 4
+the initial velocity is: 0
+ns : iter = 50, Error = 0.000000e+00 
+The molecule velocities have been shifted
+DYNAMIC_REPARTITION_TIMING_MAX status=skip_balanced changed=0 plan=0.0144609 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=0.0144627
+DYNAMIC_REPARTITION_TIMING_AVG status=skip_balanced changed=0 plan=0.0108514 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=0.0108527
+DSMC_begin 
+Finished 50 of 3000 steps.
+Preprocess: 0.0039   Advection: 0.0989   cache2chain: 0.0035   Collision: 0.0176   Statistic_macro: 0.0000
+Finished 100 of 3000 steps.
+Preprocess: 0.0041   Advection: 0.1058   cache2chain: 0.0033   Collision: 0.0190   Statistic_macro: 0.0001
+Finished 150 of 3000 steps.
+Preprocess: 0.0042   Advection: 0.1078   cache2chain: 0.0037   Collision: 0.0201   Statistic_macro: 0.0000
+Finished 200 of 3000 steps.
+Preprocess: 0.0052   Advection: 0.1033   cache2chain: 0.0033   Collision: 0.0198   Statistic_macro: 0.0001
+DYNAMIC_REPARTITION_TIMING_MAX status=skip_balanced changed=0 plan=7.54e-05 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=7.66e-05
+dynamic_times   0.0001
+DYNAMIC_REPARTITION_TIMING_AVG status=skip_balanced changed=0 plan=6.5975e-05 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=6.835e-05
+Finished 250 of 3000 steps.
+Preprocess: 0.0037   Advection: 0.0962   cache2chain: 0.0032   Collision: 0.0191   Statistic_macro: 0.0000
+Finished 300 of 3000 steps.
+Preprocess: 0.0035   Advection: 0.0967   cache2chain: 0.0029   Collision: 0.0182   Statistic_macro: 0.0001
+Finished 350 of 3000 steps.
+Preprocess: 0.0036   Advection: 0.0963   cache2chain: 0.0032   Collision: 0.0196   Statistic_macro: 0.0000
+Finished 400 of 3000 steps.
+Preprocess: 0.0040   Advection: 0.1018   cache2chain: 0.0035   Collision: 0.0203   Statistic_macro: 0.0001
+DYNAMIC_REPARTITION_TIMING_MAX status=skip_balanced changed=0 plan=0.0001134 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=0.0001149
+dynamic_times   0.0001
+DYNAMIC_REPARTITION_TIMING_AVG status=skip_balanced changed=0 plan=8.585e-05 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=8.8625e-05
+Finished 450 of 3000 steps.
+Preprocess: 0.0060   Advection: 0.1174   cache2chain: 0.0038   Collision: 0.0236   Statistic_macro: 0.0000
+Finished 500 of 3000 steps.
+Preprocess: 0.0049   Advection: 0.1106   cache2chain: 0.0036   Collision: 0.0212   Statistic_macro: 0.0001
+The macroscopic equations are solving after 500 DSMC steps
+GSIS_COUPLING step=500 knCellUpperBound=0 knRejected=0
+HIGH_ORDER_AVERAGE targets=0 filled=0 noNeighbor=0 neighborSamples=0
+HIGH_ORDER_DAMP accepted=512 damped=0 zero=0 alpha=0.2000
+ns : iter = 20, Error = 1.201894e-02 
+ns : iter = 40, Error = 8.638778e-03 
+ns : iter = 60, Error = 6.262125e-03 
+ns : iter = 80, Error = 4.708915e-03 
+ns : iter = 100, Error = 3.718337e-03 
+ns : iter = 120, Error = 3.076415e-03 
+ns : iter = 140, Error = 2.640290e-03 
+ns : iter = 160, Error = 2.324308e-03 
+ns : iter = 180, Error = 2.079543e-03 
+ns : iter = 200, Error = 1.878849e-03 
+GSIS_NS2DSMC_ACCEPT_SUM ready=1 total=512 accepted=512 rejected=0
+The molecule velocities have been shifted (acceptanceGate=on skipped=0)
+The macroscopic acceleration is done after 500 DSMC steps
+Finished 550 of 3000 steps.
+Preprocess: 0.0076   Advection: 0.1041   cache2chain: 0.0036   Collision: 0.0213   Statistic_macro: 0.0000
+Finished 600 of 3000 steps.
+Preprocess: 0.0048   Advection: 0.1287   cache2chain: 0.0037   Collision: 0.0250   Statistic_macro: 0.0020
+DYNAMIC_REPARTITION_TIMING_MAX status=skip_balanced changed=0 plan=0.0001466 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=0.000148
+dynamic_times   0.0001
+DYNAMIC_REPARTITION_TIMING_AVG status=skip_balanced changed=0 plan=0.00011435 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=0.0001172
+Finished 650 of 3000 steps.
+Preprocess: 0.0207   Advection: 0.1848   cache2chain: 0.0040   Collision: 0.0252   Statistic_macro: 0.0000
+Finished 700 of 3000 steps.
+Preprocess: 0.0043   Advection: 0.1017   cache2chain: 0.0032   Collision: 0.0201   Statistic_macro: 0.0001
+Finished 750 of 3000 steps.
+Preprocess: 0.0044   Advection: 0.1024   cache2chain: 0.0035   Collision: 0.0202   Statistic_macro: 0.0000
+Finished 800 of 3000 steps.
+Preprocess: 0.0047   Advection: 0.1051   cache2chain: 0.0034   Collision: 0.0214   Statistic_macro: 0.0001
+DYNAMIC_REPARTITION_TIMING_MAX status=skip_balanced changed=0 plan=5.84e-05 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=5.94e-05
+dynamic_times   0.0001
+DYNAMIC_REPARTITION_TIMING_AVG status=skip_balanced changed=0 plan=5.1025e-05 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=5.3075e-05
+Finished 850 of 3000 steps.
+Preprocess: 0.0044   Advection: 0.1005   cache2chain: 0.0030   Collision: 0.0197   Statistic_macro: 0.0000
+Finished 900 of 3000 steps.
+Preprocess: 0.0041   Advection: 0.0939   cache2chain: 0.0030   Collision: 0.0186   Statistic_macro: 0.0001
+Finished 950 of 3000 steps.
+Preprocess: 0.0042   Advection: 0.0947   cache2chain: 0.0028   Collision: 0.0184   Statistic_macro: 0.0000
+Finished 1000 of 3000 steps.
+Preprocess: 0.0041   Advection: 0.0936   cache2chain: 0.0028   Collision: 0.0186   Statistic_macro: 0.0002
+The macroscopic equations are solving after 1000 DSMC steps
+GSIS_COUPLING step=1000 knCellUpperBound=0 knRejected=0
+HIGH_ORDER_AVERAGE targets=0 filled=0 noNeighbor=0 neighborSamples=0
+HIGH_ORDER_DAMP accepted=512 damped=0 zero=0 alpha=0.2000
+ns : iter = 20, Error = 1.186917e-02 
+ns : iter = 40, Error = 8.409334e-03 
+ns : iter = 60, Error = 6.007554e-03 
+ns : iter = 80, Error = 4.473045e-03 
+ns : iter = 100, Error = 3.520292e-03 
+ns : iter = 120, Error = 2.909563e-03 
+ns : iter = 140, Error = 2.484339e-03 
+ns : iter = 160, Error = 2.158925e-03 
+ns : iter = 180, Error = 1.891818e-03 
+ns : iter = 200, Error = 1.663994e-03 
+GSIS_NS2DSMC_ACCEPT_SUM ready=1 total=512 accepted=512 rejected=0
+The molecule velocities have been shifted (acceptanceGate=on skipped=0)
+The macroscopic acceleration is done after 1000 DSMC steps
+DYNAMIC_REPARTITION_TIMING_MAX status=skip_balanced changed=0 plan=0.0001833 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=0.0001843
+dynamic_times   0.0001
+DYNAMIC_REPARTITION_TIMING_AVG status=skip_balanced changed=0 plan=0.00011855 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=0.000120625
+Finished 1050 of 3000 steps.
+Preprocess: 0.0046   Advection: 0.0948   cache2chain: 0.0026   Collision: 0.0185   Statistic_macro: 0.0000
+Finished 1100 of 3000 steps.
+Preprocess: 0.0041   Advection: 0.0952   cache2chain: 0.0028   Collision: 0.0187   Statistic_macro: 0.0001
+Finished 1150 of 3000 steps.
+Preprocess: 0.0041   Advection: 0.0933   cache2chain: 0.0029   Collision: 0.0184   Statistic_macro: 0.0000
+Finished 1200 of 3000 steps.
+Preprocess: 0.0041   Advection: 0.0968   cache2chain: 0.0028   Collision: 0.0191   Statistic_macro: 0.0001
+Finished 1250 of 3000 steps.
+Preprocess: 0.0040   Advection: 0.0975   cache2chain: 0.0028   Collision: 0.0187   Statistic_macro: 0.0000
+Finished 1300 of 3000 steps.
+Preprocess: 0.0047   Advection: 0.1029   cache2chain: 0.0035   Collision: 0.0206   Statistic_macro: 0.0001
+Finished 1350 of 3000 steps.
+Preprocess: 0.0051   Advection: 0.1110   cache2chain: 0.0036   Collision: 0.0238   Statistic_macro: 0.0000
+Finished 1400 of 3000 steps.
+Preprocess: 0.0048   Advection: 0.1005   cache2chain: 0.0030   Collision: 0.0198   Statistic_macro: 0.0001
+Finished 1450 of 3000 steps.
+Preprocess: 0.0088   Advection: 0.1118   cache2chain: 0.0038   Collision: 0.0208   Statistic_macro: 0.0000
+Finished 1500 of 3000 steps.
+Preprocess: 0.0043   Advection: 0.1033   cache2chain: 0.0031   Collision: 0.0201   Statistic_macro: 0.0001
+The macroscopic equations are solving after 1500 DSMC steps
+GSIS_COUPLING step=1500 knCellUpperBound=0 knRejected=0
+HIGH_ORDER_AVERAGE targets=0 filled=0 noNeighbor=0 neighborSamples=0
+HIGH_ORDER_DAMP accepted=512 damped=0 zero=0 alpha=0.2000
+ns : iter = 20, Error = 1.084831e-02 
+ns : iter = 40, Error = 7.727657e-03 
+ns : iter = 60, Error = 5.569231e-03 
+ns : iter = 80, Error = 4.161046e-03 
+ns : iter = 100, Error = 3.253811e-03 
+ns : iter = 120, Error = 2.650326e-03 
+ns : iter = 140, Error = 2.221862e-03 
+ns : iter = 160, Error = 1.894937e-03 
+ns : iter = 180, Error = 1.631453e-03 
+ns : iter = 200, Error = 1.412359e-03 
+GSIS_NS2DSMC_ACCEPT_SUM ready=1 total=512 accepted=512 rejected=0
+The molecule velocities have been shifted (acceptanceGate=on skipped=0)
+The macroscopic acceleration is done after 1500 DSMC steps
+Finished 1550 of 3000 steps.
+Preprocess: 0.0058   Advection: 0.1109   cache2chain: 0.0037   Collision: 0.0219   Statistic_macro: 0.0000
+Finished 1600 of 3000 steps.
+Preprocess: 0.0050   Advection: 0.1109   cache2chain: 0.0036   Collision: 0.0220   Statistic_macro: 0.0001
+Finished 1650 of 3000 steps.
+Preprocess: 0.0050   Advection: 0.1065   cache2chain: 0.0030   Collision: 0.0208   Statistic_macro: 0.0000
+Finished 1700 of 3000 steps.
+Preprocess: 0.0044   Advection: 0.0996   cache2chain: 0.0031   Collision: 0.0192   Statistic_macro: 0.0001
+Finished 1750 of 3000 steps.
+Preprocess: 0.0048   Advection: 0.1049   cache2chain: 0.0036   Collision: 0.0205   Statistic_macro: 0.0000
+Finished 1800 of 3000 steps.
+Preprocess: 0.0054   Advection: 0.1050   cache2chain: 0.0035   Collision: 0.0212   Statistic_macro: 0.0001
+Finished 1850 of 3000 steps.
+Preprocess: 0.0052   Advection: 0.1073   cache2chain: 0.0033   Collision: 0.0211   Statistic_macro: 0.0000
+Finished 1900 of 3000 steps.
+Preprocess: 0.0049   Advection: 0.0981   cache2chain: 0.0031   Collision: 0.0192   Statistic_macro: 0.0001
+Finished 1950 of 3000 steps.
+Preprocess: 0.0044   Advection: 0.1075   cache2chain: 0.0033   Collision: 0.0199   Statistic_macro: 0.0000
+Finished 2000 of 3000 steps.
+Preprocess: 0.0046   Advection: 0.1003   cache2chain: 0.0032   Collision: 0.0200   Statistic_macro: 0.0001
+The macroscopic equations are solving after 2000 DSMC steps
+GSIS_COUPLING step=2000 knCellUpperBound=0 knRejected=0
+HIGH_ORDER_AVERAGE targets=0 filled=0 noNeighbor=0 neighborSamples=0
+HIGH_ORDER_DAMP accepted=512 damped=0 zero=0 alpha=0.2000
+ns : iter = 20, Error = 1.160664e-02 
+ns : iter = 40, Error = 8.302234e-03 
+ns : iter = 60, Error = 5.985114e-03 
+ns : iter = 80, Error = 4.476264e-03 
+ns : iter = 100, Error = 3.513486e-03 
+ns : iter = 120, Error = 2.875966e-03 
+ns : iter = 140, Error = 2.417970e-03 
+ns : iter = 160, Error = 2.058725e-03 
+ns : iter = 180, Error = 1.759103e-03 
+ns : iter = 200, Error = 1.501696e-03 
+GSIS_NS2DSMC_ACCEPT_SUM ready=1 total=512 accepted=512 rejected=0
+The molecule velocities have been shifted (acceptanceGate=on skipped=0)
+The macroscopic acceleration is done after 2000 DSMC steps
+DYNAMIC_REPARTITION_TIMING_MAX status=skip_balanced changed=0 plan=0.0001046 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=0.0001229
+dynamic_times   0.0001
+DYNAMIC_REPARTITION_TIMING_AVG status=skip_balanced changed=0 plan=8.5875e-05 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=9.16e-05
+Finished 2050 of 3000 steps.
+Preprocess: 0.0047   Advection: 0.0980   cache2chain: 0.0031   Collision: 0.0201   Statistic_macro: 0.0000
+Finished 2100 of 3000 steps.
+Preprocess: 0.0045   Advection: 0.1005   cache2chain: 0.0031   Collision: 0.0205   Statistic_macro: 0.0000
+Finished 2150 of 3000 steps.
+Preprocess: 0.0042   Advection: 0.0953   cache2chain: 0.0028   Collision: 0.0192   Statistic_macro: 0.0000
+Finished 2200 of 3000 steps.
+Preprocess: 0.0050   Advection: 0.1026   cache2chain: 0.0034   Collision: 0.0206   Statistic_macro: 0.0000
+Finished 2250 of 3000 steps.
+Preprocess: 0.0043   Advection: 0.0986   cache2chain: 0.0031   Collision: 0.0200   Statistic_macro: 0.0000
+Finished 2300 of 3000 steps.
+Preprocess: 0.0042   Advection: 0.0989   cache2chain: 0.0030   Collision: 0.0190   Statistic_macro: 0.0000
+Finished 2350 of 3000 steps.
+Preprocess: 0.0051   Advection: 0.1077   cache2chain: 0.0032   Collision: 0.0203   Statistic_macro: 0.0000
+Finished 2400 of 3000 steps.
+Preprocess: 0.0048   Advection: 0.1040   cache2chain: 0.0035   Collision: 0.0207   Statistic_macro: 0.0000
+Finished 2450 of 3000 steps.
+Preprocess: 0.0043   Advection: 0.0991   cache2chain: 0.0030   Collision: 0.0227   Statistic_macro: 0.0000
+Finished 2500 of 3000 steps.
+Preprocess: 0.0059   Advection: 0.1058   cache2chain: 0.0032   Collision: 0.0210   Statistic_macro: 0.0000
+The macroscopic equations are solving after 2500 DSMC steps
+GSIS_COUPLING step=2500 knCellUpperBound=0 knRejected=0
+HIGH_ORDER_AVERAGE targets=0 filled=0 noNeighbor=0 neighborSamples=0
+HIGH_ORDER_DAMP accepted=512 damped=0 zero=0 alpha=0.2000
+ns : iter = 20, Error = 1.199804e-02 
+ns : iter = 40, Error = 8.551871e-03 
+ns : iter = 60, Error = 6.114423e-03 
+ns : iter = 80, Error = 4.518509e-03 
+ns : iter = 100, Error = 3.498435e-03 
+ns : iter = 120, Error = 2.830713e-03 
+ns : iter = 140, Error = 2.365938e-03 
+ns : iter = 160, Error = 2.016951e-03 
+ns : iter = 180, Error = 1.737268e-03 
+ns : iter = 200, Error = 1.503163e-03 
+GSIS_NS2DSMC_ACCEPT_SUM ready=1 total=512 accepted=512 rejected=0
+The molecule velocities have been shifted (acceptanceGate=on skipped=0)
+The macroscopic acceleration is done after 2500 DSMC steps
+Finished 2550 of 3000 steps.
+Preprocess: 0.0071   Advection: 0.1034   cache2chain: 0.0032   Collision: 0.0221   Statistic_macro: 0.0000
+Finished 2600 of 3000 steps.
+Preprocess: 0.0047   Advection: 0.1020   cache2chain: 0.0033   Collision: 0.0206   Statistic_macro: 0.0000
+Finished 2650 of 3000 steps.
+Preprocess: 0.0048   Advection: 0.0983   cache2chain: 0.0033   Collision: 0.0203   Statistic_macro: 0.0000
+Finished 2700 of 3000 steps.
+Preprocess: 0.0052   Advection: 0.1086   cache2chain: 0.0039   Collision: 0.0221   Statistic_macro: 0.0000
+Finished 2750 of 3000 steps.
+Preprocess: 0.0054   Advection: 0.1110   cache2chain: 0.0039   Collision: 0.0220   Statistic_macro: 0.0000
+Finished 2800 of 3000 steps.
+Preprocess: 0.0048   Advection: 0.1055   cache2chain: 0.0037   Collision: 0.0217   Statistic_macro: 0.0000
+Finished 2850 of 3000 steps.
+Preprocess: 0.0049   Advection: 0.1034   cache2chain: 0.0032   Collision: 0.0204   Statistic_macro: 0.0000
+Finished 2900 of 3000 steps.
+Preprocess: 0.0048   Advection: 0.1048   cache2chain: 0.0033   Collision: 0.0204   Statistic_macro: 0.0000
+Finished 2950 of 3000 steps.
+Preprocess: 0.0049   Advection: 0.1110   cache2chain: 0.0034   Collision: 0.0207   Statistic_macro: 0.0000
+Finished 3000 of 3000 steps.
+Preprocess: 0.0055   Advection: 0.1097   cache2chain: 0.0036   Collision: 0.0219   Statistic_macro: 0.0001
+The macroscopic equations are solving after 3000 DSMC steps
+GSIS_COUPLING step=3000 knCellUpperBound=0 knRejected=0
+HIGH_ORDER_AVERAGE targets=0 filled=0 noNeighbor=0 neighborSamples=0
+HIGH_ORDER_DAMP accepted=512 damped=0 zero=0 alpha=0.2000
+ns : iter = 20, Error = 1.252284e-02 
+ns : iter = 40, Error = 9.028920e-03 
+ns : iter = 60, Error = 6.538205e-03 
+ns : iter = 80, Error = 4.886198e-03 
+ns : iter = 100, Error = 3.810673e-03 
+ns : iter = 120, Error = 3.091414e-03 
+ns : iter = 140, Error = 2.580021e-03 
+ns : iter = 160, Error = 2.189120e-03 
+ns : iter = 180, Error = 1.871924e-03 
+ns : iter = 200, Error = 1.604980e-03 
+GSIS_NS2DSMC_ACCEPT_SUM ready=1 total=512 accepted=512 rejected=0
+The molecule velocities have been shifted (acceptanceGate=on skipped=0)
+The macroscopic acceleration is done after 3000 DSMC steps
+DYNAMIC_REPARTITION_TIMING_MAX status=skip_balanced changed=0 plan=6.74e-05 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=6.83e-05
+dynamic_times   0.0001
+DYNAMIC_REPARTITION_TIMING_AVG status=skip_balanced changed=0 plan=4.8075e-05 particle_migrate=0 geometry_distribute=0 field_migrate=0 rebuild=0 total=4.965e-05
+Total running time = 9.239404
+Total time pre = 8.176621
+----------------------------

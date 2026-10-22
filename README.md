@@ -1,120 +1,97 @@
-# DIG-appolo
+# DIG-DSMC equilibrium-box benchmark
 
-DSMC/NS parallel solver case for the Apollo mesh.
+A lightweight DIG-augmented DSMC case: an 8 x 8 x 8 closed box with six stationary isothermal diffuse walls, run with four MPI processes.
 
-## Basic Requirements
+The original Apollo case, mesh, and supercomputer build/job scripts are preserved on the `apollo-original` branch; `master` contains this lightweight benchmark.
 
-To compile and run this code on another machine, the basic requirements are:
+## Case
 
-- Linux or Linux-based HPC environment
-- MPI runtime and MPI compiler wrapper, such as Intel MPI, OpenMPI, or MPICH
-- C++11-compatible compiler
-- METIS library and headers
-- GKlib library and headers
-- Matching Fluent CAS mesh file
-- Enough CPU cores and memory for the selected mesh and particle count
-
-## Build Notes
-
-The current `Makefile` is configured for an Intel/HPC environment:
-
-```makefile
-CC := mpiicpc
-CFLAGS := -O3 -xSKYLAKE-AVX512 -qopt-zmm-usage=high
-```
-
-On a different machine, update the compiler and dependency paths in `Makefile`:
-
-```makefile
-MPI_INCLUDE :=
-MPI_LIB :=
-METIS_INCLUDE :=
-METIS_LIB :=
-GK_INCLUDE :=
-GK_LIB :=
-```
-
-For a more portable first build, the compiler settings may be changed to something like:
-
-```makefile
-CC := mpic++
-CFLAGS := -O3 -std=c++11
-```
-
-Then build with:
-
-```bash
-make
-```
-
-## Mesh And Case Settings
-
-The default mesh path is:
-
-```text
-./mesh/3dapollo372500.cas
-```
-
-The current code has the mesh cell count hard-coded in `src/meshImport.h`:
-
-```cpp
-const int NCELL = 372500;
-```
-
-If a different mesh is used, make sure this value matches the mesh cell count.
-
-## Basic Case Parameters
-
-The current Apollo case is configured in the source code with the following
-basic settings:
-
-| Quantity | Value |
+| Parameter | Value |
 | --- | --- |
-| Freestream Mach number | `Ma = 5` |
-| Knudsen number | `Kn = 0.01` |
-| Angle of attack | `30 deg` |
-| Reference length | `L0 = 3.912 m` |
-| Freestream temperature | `T_in = 142.2 K` |
-| Wall temperature | `T_w = 300 K` |
-| Reference temperature | `T_ref = 273.15 K` |
-| Mesh cell count | `NCELL = 372500` |
-| Initial particles per cell | `Npinitial = 100` |
-| Approximate initial particle count | `37250000` |
-| Total DSMC/DIG evolution steps | `NTOTAL = 10000` |
-| Exponential averaging startup steps | `NSCHEME = 2000` |
-| Sampling start step | `NSS = 5000` |
+| Mesh | [cavity_512.cas](mesh/cavity_512.cas); 512 equal-volume cells; length 1 m |
+| Boundary tags | Interior 3; walls 4 |
+| Mach / Knudsen number | 0 / 0.1 |
+| Initial and wall temperature | 273.15 K |
+| Initial particles | 30 per cell; 15360 total |
+| Random seed | 20261015; streams derived from MPI rank |
+| DSMC steps / sampling start | 3000 / 400 |
+| DIG interval / NS iteration cap | 500 steps / 200 iterations per call |
+| Parallel execution | 4 MPI processes; 1 OpenMP thread per process |
+| Kn-cell upper-bound filter | Disabled |
+
+The theoretical equilibrium is uniform: normalized density 1, zero mean velocity, and translational and rotational temperatures of 273.15 K. Finite particle sampling produces fluctuations.
+
+Case parameters are compiled into `src/`; recompile after changing them. [reference_results.json](verification/reference_results.json) records the configuration and acceptance criteria; it does not configure the solver.
+
+## Build
+
+See [BUILD.md](BUILD.md) for Windows MinGW + Microsoft MPI and Ubuntu / WSL instructions, including METIS/GKlib compilation. The solver uses C++11 and GNU Make; dependency libraries must match the platform and use 32-bit METIS indices and reals.
+
+After installing the dependencies:
+
+```sh
+make -j4
+```
+
+Python 3 is required for verification; plotting also requires NumPy and Matplotlib:
+
+```sh
+python -m pip install numpy matplotlib
+```
 
 ## Run
 
-`SubmitJob.lsf` is not required for running the code. If MPI is available and
-the working directory and paths are set correctly, the executable can be run
-directly with `mpirun`.
+Run from the repository root, using a fresh output directory.
 
-Run from the repository root, or update the relative mesh/output paths in the
-code and run script accordingly:
+**Windows PowerShell**
+
+```powershell
+$caseRoot = (Get-Location).Path
+New-Item -ItemType Directory -Force runs/cavity/statisticResults,runs/cavity/nsTemp,runs/cavity/cellDistribute | Out-Null
+$env:OMP_NUM_THREADS = "1"
+Remove-Item Env:DSMC2NS_KN_CELL_UPPER_BOUND,Env:DSMC2NS_KN_CELL_FILTER -ErrorAction SilentlyContinue
+Push-Location runs/cavity
+mpiexec -n 4 "$caseRoot/main_mpiDSMC_ht.exe" "$caseRoot/mesh/cavity_512.cas" 2>&1 | Tee-Object -FilePath run.log
+$solverExitCode = $LASTEXITCODE
+Pop-Location
+if ($solverExitCode -ne 0) { throw "MPI run failed with exit code $solverExitCode" }
+```
+
+**Ubuntu / WSL**
 
 ```bash
-mpirun -np 160 ./main_mpiDSMC_ht > log.txt
+case_root="$PWD"
+mkdir -p runs/cavity/statisticResults runs/cavity/nsTemp runs/cavity/cellDistribute
+cd runs/cavity
+export OMP_NUM_THREADS=1
+unset DSMC2NS_KN_CELL_UPPER_BOUND DSMC2NS_KN_CELL_FILTER
+mpiexec -n 4 "$case_root/main_mpiDSMC_ht" "$case_root/mesh/cavity_512.cas" > run.log 2>&1
+solver_exit_code=$?
+cd "$case_root"
+if [ "$solver_exit_code" -ne 0 ]; then echo "MPI run failed: $solver_exit_code"; exit "$solver_exit_code"; fi
 ```
 
-`SubmitJob.lsf` is only an optional example for an LSF cluster. Before using it
-on another system, update the queue name, core count, module loads, executable
-path, and any mesh/output paths to match that machine:
+## Verify and plot
 
-```bash
-bsub < SubmitJob.lsf
+The supplied [reference run](runs/cavity_kn01_reference/) contains the four-process execution log and 22 field files. Inspect it without compiling or running the solver:
+
+```sh
+python -B verification/check_results.py --input runs/cavity_kn01_reference
+python -B verification/plot_results.py --input runs/cavity_kn01_reference --outdir benchmark_plots
 ```
 
-At least two MPI processes are required. Rank 0 reads and distributes the mesh, and the compute ranks are `size - 1`.
+For your own run, replace `runs/cavity_kn01_reference` with `runs/cavity`. Use `python3` on Linux if needed. Plots are saved as `equilibrium_fields.png` and `equilibrium_history.png` in the output directory.
 
-## Output Directories
+| Global mean | Equilibrium | Reference result | Tolerance |
+| --- | ---: | ---: | --- |
+| Normalized density | 1 | 0.9995242 | +/-0.5% of equilibrium |
+| Translational temperature | 273.15 K | 272.9794 K | +/-0.5% of equilibrium |
+| Rotational temperature | 273.15 K | 272.9150 K | +/-0.5% of equilibrium |
 
-The following directories are expected by the code and are tracked with `.gitkeep` files:
+Each normalized mean velocity component must be within +/-0.001; spatial RMS density/temperature errors and RMS speed must be at most 0.015. These are regression limits for global statistics, not per-cell bounds or confidence intervals. Full definitions and exact reference values are in [reference_results.json](verification/reference_results.json).
 
-```text
-cellDistribute/
-nsTemp/
-statisticResults/
-```
+The checker also checks complete finite fields, positive density/temperatures, the seed and rank count, disabled Kn-cell filtering, 3000 completed steps, and six DIG cycles transferring and correcting all 512 cells. Exit codes: `0` pass, `1` failed checks, `2` input/parsing error. Only the four-process configuration has been validated; fixed seeds do not guarantee identical results across toolchains.
 
-DSMC output is written mainly to `statisticResults/`, and NS output is written to `nsTemp/`.
+## License
+
+Original project code and documentation: [MIT License](LICENSE), copyright (c) 2026 DIG-DSMC contributors. Bundled [METIS/GKlib sources](metis/sources/) retain their own licenses and copyright notices.

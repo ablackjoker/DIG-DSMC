@@ -1,6 +1,4 @@
-/*
- * Local geometry installation and DSMC lookup-cache rebuilds.
- */
+// Installs partition geometry and rebuilds caches for particle tracing and migration.
 
 #include "ProcessDSMC.h"
 
@@ -8,13 +6,6 @@
 #include <cmath>
 #include <utility>
 
-/*
- * installLocalGeometry: works with mesh topology or geometric intersections.
- * Params: geometry; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 void ProcessDSMC::installLocalGeometry(LocalGeometry3D&& geometry)
 {
     this->iNcell = geometry.ownedCount;
@@ -38,13 +29,6 @@ void ProcessDSMC::installLocalGeometry(LocalGeometry3D&& geometry)
     ensure_partition_time_storage();
 }
 
-/*
- * rebuild_migration_peer_cache: prepares derived solver state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 void ProcessDSMC::rebuild_migration_peer_cache()
 {
     this->migrationPeerRanks.clear();
@@ -78,13 +62,6 @@ void ProcessDSMC::rebuild_migration_peer_cache()
     }
 }
 
-/*
- * rebuildFaceLookup: works with mesh topology or geometric intersections.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 void ProcessDSMC::rebuildFaceLookup()
 {
     const int denseSize = std::max(this->mess.Nface, (int)this->face_gids.size());
@@ -104,13 +81,6 @@ void ProcessDSMC::rebuildFaceLookup()
     }
 }
 
-/*
- * rebuildFaceCrossCache: works with mesh topology or geometric intersections.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 void ProcessDSMC::rebuildFaceCrossCache()
 {
     this->faceCrossCache.assign(this->edges.size(), FaceCrossCache());
@@ -135,13 +105,6 @@ void ProcessDSMC::rebuildFaceCrossCache()
     }
 }
 
-/*
- * rebuildFaceTraversalCache: works with mesh topology or geometric intersections.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 void ProcessDSMC::rebuildFaceTraversalCache()
 {
     this->cellTriOffset.assign(this->cells.size() + 1u, 0);
@@ -213,13 +176,6 @@ void ProcessDSMC::rebuildFaceTraversalCache()
     this->cellTriOffset[this->cells.size()] = (int)this->cellTriCache.size();
 }
 
-/*
- * localOfGlobalFace: works with mesh topology or geometric intersections.
- * Params: gid; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 int ProcessDSMC::localOfGlobalFace(int gid) const
 {
     if (gid >= 0 && gid < (int)this->faceGid2LocalDense.size())
@@ -229,38 +185,17 @@ int ProcessDSMC::localOfGlobalFace(int gid) const
     return it->second;
 }
 
-/*
- * ensure_partition_flux_storage: updates partition ownership or load data.
- * Params: none; returns: none.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- */
 void ProcessDSMC::ensure_partition_flux_storage()
 {
     if (!this->enable_partition_flux_weights) return;
     if (this->mess.Ncell <= 0 && this->mesh == nullptr) return;
 }
 
-/*
- * reset_partition_flux_counts: updates partition ownership or load data.
- * Params: none; returns: none.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- */
 void ProcessDSMC::reset_partition_flux_counts()
 {
     this->partition_edge_flux.clear();
 }
 
-/*
- * ensure_partition_time_storage: updates partition ownership or load data.
- * Params: none; returns: none.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- */
 void ProcessDSMC::ensure_partition_time_storage()
 {
     const int ncell = (this->mess.Ncell > 0)
@@ -274,25 +209,11 @@ void ProcessDSMC::ensure_partition_time_storage()
         this->cell_time_weight_ema.assign((std::size_t)ncell, 0.0);
 }
 
-/*
- * reset_partition_time_weights: updates partition ownership or load data.
- * Params: none; returns: none.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- */
 void ProcessDSMC::reset_partition_time_weights()
 {
     this->cell_time_weight_accum.clear();
 }
 
-/*
- * accumulate_cell_time_weight: works with mesh topology or geometric intersections.
- * Params: globalCell, dt; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 void ProcessDSMC::accumulate_cell_time_weight(int globalCell, double dt)
 {
     if (!this->enable_partition_time_weights) return;
@@ -307,13 +228,6 @@ void ProcessDSMC::accumulate_cell_time_weight(int globalCell, double dt)
     this->cell_time_weight_accum[globalCell] += dt;
 }
 
-/*
- * record_partition_flux: updates partition ownership or load data.
- * Params: oldCell, endOldCell, startLocalCell; returns: none.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- */
 void ProcessDSMC::record_partition_flux(int oldCell, int endOldCell, int startLocalCell)
 {
     if (!this->enable_partition_flux_weights) return;
