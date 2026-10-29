@@ -235,9 +235,10 @@ bool MessagePassing::commitMyvis(MPI_Datatype &datatype)
 
 bool MessagePassing::commitParticle(MPI_Datatype &datatype)
 {
-    const int nitems = 7;
-    int blocklengths[7] = {1, 1, 1, DIM, DIM, 1, 1};
-    MPI_Datatype types[7] = {
+    const int nitems = 8;
+    int blocklengths[8] = {1, 1, 1, 1, DIM, DIM, 1, 1};
+    MPI_Datatype types[8] = {
+        MPI_INT,
         MPI_INT,
         MPI_INT,
         MPI_INT,
@@ -246,14 +247,17 @@ bool MessagePassing::commitParticle(MPI_Datatype &datatype)
         MPI_DOUBLE,
         MPI_DOUBLE
     };
-    MPI_Aint offsets[7];
+    MPI_Aint offsets[8];
+
     offsets[0] = offsetof(particle, p_serial);
     offsets[1] = offsetof(particle, p_rank_serial);
     offsets[2] = offsetof(particle, p_mesh_serial);
-    offsets[3] = offsetof(particle, p_velocity);
-    offsets[4] = offsetof(particle, p_location);
-    offsets[5] = offsetof(particle, p_Ir);
-    offsets[6] = offsetof(particle, dt_left);
+    offsets[3] = offsetof(particle, p_weight_origin_gid);
+    offsets[4] = offsetof(particle, p_velocity);
+    offsets[5] = offsetof(particle, p_location);
+    offsets[6] = offsetof(particle, p_Ir);
+    offsets[7] = offsetof(particle, dt_left);
+
     MPI_Datatype rawDatatype = MPI_DATATYPE_NULL;
     MPI_Type_create_struct(nitems, blocklengths, offsets, types, &rawDatatype);
     MPI_Type_create_resized(rawDatatype, 0, (MPI_Aint)sizeof(particle), &datatype);

@@ -132,6 +132,8 @@ int main(int argc, char **argv)
     dyprocess = new dynamicDSMC(mesh, mpass, mess, partinit, process,mpiCtx);
     progsis = new ProcessGSIS(mesh, process, partinit, nsprocess,mpiCtx);
 
+    startTime = MPI_Wtime();
+
     nsprocess->nsProcessG13(1e5, 1e-5, false,istep);
     progsis->NS2DSMC();
     progsis->molecular_velocity_change();
@@ -153,7 +155,6 @@ int main(int argc, char **argv)
 
     MPI_Barrier(comm);
     if(mpiCtx.root()){cout << "DSMC_begin "<< endl;}
-    startTime = MPI_Wtime();
 
     for (istep = 1; istep <= NTOTAL; istep++)
     {   
@@ -268,6 +269,8 @@ int main(int argc, char **argv)
         printf("Total running time = %lf\n", (endTime - startTime));
         printf("Total time pre = %lf\n", (dsmc_step_end - dsmc_step_start));
     }
+
+    process->reportCellWeightStatistics();
 
     if(mpiCtx.activeLeader()){
         printf("----------------------------\n");

@@ -15,6 +15,7 @@ struct particle
     int p_serial;
     int p_rank_serial;
     int p_mesh_serial;
+    int p_weight_origin_gid = -1;
     // Velocity and position are stored in normalized DSMC units.
     double p_velocity[DIM];
     double p_location[DIM];
@@ -145,6 +146,28 @@ struct ParticleBucketSoA
         dt_left.push_back(part.dt_left);
     }
 
+    void append_copies(const particle& part, int localCell, int rank, int copies)
+    {
+        if (copies <= 0) return;
+
+        const size_t first = size();
+        const size_t count = (size_t)copies;
+        p_serial.resize(first + count);
+        for (size_t offset = 0; offset < count; ++offset)
+            p_serial[first + offset] = (int)(first + offset);
+
+        p_rank_serial.insert(p_rank_serial.end(), count, rank);
+        p_mesh_serial.insert(p_mesh_serial.end(), count, localCell);
+        vx.insert(vx.end(), count, part.p_velocity[0]);
+        vy.insert(vy.end(), count, part.p_velocity[1]);
+        vz.insert(vz.end(), count, part.p_velocity[2]);
+        px.insert(px.end(), count, part.p_location[0]);
+        py.insert(py.end(), count, part.p_location[1]);
+        pz.insert(pz.end(), count, part.p_location[2]);
+        p_Ir.insert(p_Ir.end(), count, part.p_Ir);
+        dt_left.insert(dt_left.end(), count, 0.0);
+    }
+
     void pop_back()
     {
         p_serial.pop_back();
@@ -224,6 +247,7 @@ public:
     unordered_map<int, ParticleBucketSoA> cell_particles_next;
 
     vector<int> cell_particle_reserve_hint;
+    vector<double> cellNeffByGlobal;
     vector<double> crmax;
 
     vector<double> remainderincoll;
@@ -236,6 +260,8 @@ public:
     MeshparticalInitial(meshImport *mesh, meshMessage mess, MessagePassing *mpass, const MpiContext& mpiCtx);
 
     void module_variables();
+
+    double particleWeight(int globalCell) const;
 
     void allocateOwnedParticleBuckets();
 

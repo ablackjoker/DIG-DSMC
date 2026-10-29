@@ -17,6 +17,7 @@
 #include <queue>
 #include <metis.h>
 #include <cfloat>
+#include <cmath>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -36,9 +37,12 @@ const int MAXSIZE = 4e5;
 const int VAR = 6;       
 const int VAR2 = 12;     
 const int VAR3 = 6;      
-const int NCELL = 372500;    
+const int NCELL = 512;
 const int NTOTAL = 3000;
 const int Npinitial = 30;
+const bool EnableSpatialCellWeight = true;
+const int TargetParticlesPerCell = Npinitial;
+const double CellWeightLargeNeighborRatioWarning = 20.0;
 const int RANDOM_SEED = 20261015u;
 const int NSS = 400;
 const int NDSIPLAY = 50;
@@ -239,6 +243,9 @@ public:
     int Npc_initial;
     double Neff;
     double dtime;
+    bool spatialCellWeightEnabled = EnableSpatialCellWeight;
+    int targetParticlesPerCell = TargetParticlesPerCell;
+    vector<double> cellNeff;
 
     meshImport();
 
@@ -261,6 +268,10 @@ public:
     bool readNodes(stringstream &sst, ifstream &infile);
 
     bool readPeriodic(stringstream &sst, ifstream &infile);
+
+    bool buildCellWeights();
+
+    double particleWeight(int globalCell) const;
 
     bool preprocess(idx_t nParts);   
 

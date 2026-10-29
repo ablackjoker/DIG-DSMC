@@ -322,6 +322,11 @@ MeshparticalInitial :: MeshparticalInitial(meshImport *mesh, meshMessage mess, M
              << " rank=" << this->rank << endl;
         return;
     }
+    if (!transfer.broadcastCellWeights(this->cellNeffByGlobal))
+    {
+        cout << "MESH_PARTITION_INITIAL_WEIGHT_BCAST_FAIL" << " rank=" << this->rank << endl;
+        return;
+    }
     this->partitionReady = true;
     if(active)
     {
@@ -334,6 +339,17 @@ MeshparticalInitial :: MeshparticalInitial(meshImport *mesh, meshMessage mess, M
             if(Npc_exa > 0 && !Np_tri.empty()) { meshfillpar(i, Np_tri); }
         }
     }
+}
+
+double MeshparticalInitial::particleWeight(int globalCell) const
+{
+    if (globalCell >= 0 && globalCell < (int)this->cellNeffByGlobal.size())
+    {
+        const double weight = this->cellNeffByGlobal[(size_t)globalCell];
+        if (weight > 0.0 && std::isfinite(weight))
+            return weight;
+    }
+    return this->mess.Neff;
 }
 
 void MeshparticalInitial ::module_variables()
@@ -414,6 +430,7 @@ void MeshparticalInitial :: CreateParticlesnode(int j,int i, int index0, int ind
         parts.p_rank_serial = this->c_rank;
         parts.p_mesh_serial = localCell;
         parts.dt_left = 0.0;
+        parts.p_weight_origin_gid = -1;
         bucket.push_back(parts);
         if (gid >= 0 && gid < (int)this->cell_particle_reserve_hint.size())
         {
@@ -442,6 +459,7 @@ void MeshparticalInitial :: CreateParticlesnode(int j,int i, int index0, int ind
         parts.p_rank_serial = this->c_rank;
         parts.p_mesh_serial = localCell;
         parts.dt_left = 0.0;
+        parts.p_weight_origin_gid = -1;
         bucket.push_back(parts);
         if (gid >= 0 && gid < (int)this->cell_particle_reserve_hint.size())
         {

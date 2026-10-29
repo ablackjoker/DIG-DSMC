@@ -18,7 +18,9 @@
       4
     ],
     "initial_particles_per_cell": 30,
-    "kn_cell_upper_bound_enabled": false
+    "kn_cell_upper_bound_enabled": false,
+    "rotational_collision_number": 2.59,
+    "rotational_relaxation_probability": 0.25
   },
   "expected_equilibrium": {
     "_description": "Theoretical equilibrium values; normalized temperatures equal 1 at 273.15 K.",
@@ -35,32 +37,32 @@
   "observed_reference_metrics": {
     "_description": "Measured fixed-seed results; density, velocity and unmarked temperature fields are normalized, while *_K temperatures use kelvin.",
     "cells": 512,
-    "rho_mean": 0.99952420703125,
-    "Tt_mean": 0.999375486328125,
-    "Tr_mean": 0.99913980859375,
-    "rho_rms_error": 0.009109760182465355,
-    "Tt_rms_error": 0.006230568851155113,
-    "Tr_rms_error": 0.007867998474834624,
-    "velocity_rms": 0.009080217936433311,
+    "rho_mean": 0.99948651953125,
+    "Tt_mean": 1.00050884375,
+    "Tr_mean": 1.000978080078125,
+    "rho_rms_error": 0.00895841476804072,
+    "Tt_rms_error": 0.006108747055964094,
+    "Tr_rms_error": 0.008329906231300909,
+    "velocity_rms": 0.00897905746526507,
     "nonpositive_rho_or_T": 0,
     "nonfinite_values": 0,
     "rho_range": [
-      0.970436,
-      1.03003
+      0.972244,
+      1.02579
     ],
     "Tt_range": [
-      0.979396,
-      1.02333
+      0.981549,
+      1.01864
     ],
     "Tr_range": [
-      0.975891,
-      1.02255
+      0.975323,
+      1.02784
     ],
-    "u_mean_x": -0.0001477754033203125,
-    "u_mean_y": -9.412656132812501e-05,
-    "u_mean_z": 3.0005891601562517e-05,
-    "Tt_mean_K": 272.9794140905273,
-    "Tr_mean_K": 272.9150387173828
+    "u_mean_x": -3.378864060546874e-05,
+    "u_mean_y": 4.863328517578125e-05,
+    "u_mean_z": 1.316658378906252e-05,
+    "Tt_mean_K": 273.2889906703125,
+    "Tr_mean_K": 273.4171625733398
   },
   "acceptance": {
     "_description": "The checker applies lower and upper bounds; +/-0.5 percent limits global means, not every cell.",
@@ -157,5 +159,5 @@
   },
   "_provenance_note": "Hashes identify the supplied mesh and final reference field; they are not numerical tolerances.",
   "mesh_sha256": "300877ec8c10501277b29699bfb5f1919eeb1d3c5b7ca4b7c5cc1b6a6f57266d",
-  "reference_field_sha256": "c44d7f073b36d2f0cf020866fe0c116ee6690565c93984539b7b4291e087767b"
+  "reference_field_sha256": "9f95be2a337e4983532b28f173123a536f9b5b0c17278e91f9d00d38facd59d3"
 }

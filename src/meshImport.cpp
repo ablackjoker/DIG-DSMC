@@ -1007,7 +1007,7 @@ void meshImport::setMa_Kn_CFL(double ma, double kn, double cfl, double cfl_psu, 
 
 void meshImport::setMeshMessage()
 {
-    dr = 2, dv = 1.626, zr = 3.5, zv = 2 * zr, omega = 0.74; 
+    dr = 2, dv = 1.626, zr = 2.59, zv = 2 * zr, omega = 0.74;
     f_tra = 2.365, f_rot = 1.435;
     gamma = (5.0 + dr) / (3.0 + dr);
     delta_rp = pow(M_PI * 0.5, 0.5) / Kn, delta_sm = 1.0 / 1.33;
@@ -1064,7 +1064,7 @@ void meshImport::setMeshMessage()
     double dt_ref = (1/Kn)*sqrt(M_PI)/2*miu_ref/p_ref*sqrt(T_in/T_ref);
     double Z_sparta = tau/tauc * zr;
     double P_relax = 1/Z_sparta;
-    P_relax = 0.18;
+    P_relax = 0.25;
     mess.kB = kB;
     mess.T_ref = T_ref;
     mess.T_in = T_in;
@@ -1118,11 +1118,17 @@ void meshImport::setParticleMessage()
         }
     }
     this->miniLength = mintag;
-    this->Npc_initial = Npinitial;
+    this->Npc_initial = this->targetParticlesPerCell;
     const int realCellCount = this->Ncell;
     this->Nps = Npc_initial * realCellCount; 
     this->Neff = mess.Area * mess.n_ref / Nps;
     this->dtime = miniLength*0.2;
+    if (!this->buildCellWeights())
+    {
+        cerr << "CELL_WEIGHT_INITIALIZATION_FAIL" << endl;
+        MPI_Abort(MPI_COMM_WORLD, 1);
+        return;
+    }
     if (this->Npc_exa != NULL)
     {
         delete[] this->Npc_exa;
@@ -1137,7 +1143,7 @@ void meshImport::setParticleMessage()
             meshIndex = i;
         }
         double S = this->cells[meshIndex].area;
-        double Ns = S*Nps/this->Area;
+        double Ns = mess.n_ref * S / this->particleWeight(i);
         double r = static_cast<double>(rand())/ RAND_MAX;
         if (r<(Ns-floor(Ns))){this->Npc_exa[i] = floor(Ns) + 1;}
         else{this->Npc_exa[i] = floor(Ns);} 
@@ -1145,6 +1151,82 @@ void meshImport::setParticleMessage()
     mess.dtime = this->dtime;
     mess.Neff = this->Neff;
     this->calGridpar();
+}
+
+double meshImport::particleWeight(int globalCell) const
+{
+    if (this->spatialCellWeightEnabled && globalCell >= 0 && globalCell < (int)this->cellNeff.size())
+    {
+        const double weight = this->cellNeff[(size_t)globalCell];
+        if (weight > 0.0 && std::isfinite(weight))
+            return weight;
+    }
+    return this->Neff;
+}
+
+bool meshImport::buildCellWeights()
+{
+    const int realCellCount = this->Ncell;
+    if (realCellCount <= 0 || !(this->Neff > 0.0) || !std::isfinite(this->Neff))
+        return false;
+
+    this->cellNeff.assign((size_t)realCellCount, this->Neff);
+    if (!this->spatialCellWeightEnabled)
+        return true;
+    if (this->targetParticlesPerCell <= 0 ||
+        !(this->mess.n_ref > 0.0) || !std::isfinite(this->mess.n_ref))
+        return false;
+
+    double minWeight = DBL_MAX;
+    double maxWeight = 0.0;
+    for (int gid = 0; gid < realCellCount; ++gid)
+    {
+        int meshIndex = (this->reMeshIndex != NULL) ? this->reMeshIndex[gid] : gid;
+        if (meshIndex < 0 || meshIndex >= realCellCount)
+            return false;
+
+        const double volume = this->cells[meshIndex].area;
+        const double weight = this->mess.n_ref * volume / (double)this->targetParticlesPerCell;
+        if (!(weight > 0.0) || !std::isfinite(weight))
+        {
+            cerr << "CELL_WEIGHT_INVALID gid=" << gid
+                 << " volume=" << volume
+                 << " weight=" << weight << endl;
+            return false;
+        }
+        this->cellNeff[(size_t)gid] = weight;
+        minWeight = std::min(minWeight, weight);
+        maxWeight = std::max(maxWeight, weight);
+    }
+
+    double maxNeighborRatio = 1.0;
+    if ((int)this->Dsmccells.size() == realCellCount)
+    {
+        for (int gid = 0; gid < realCellCount; ++gid)
+        {
+            const DsmcCell& source = this->Dsmccells[(size_t)gid];
+            for (int slot = 0; slot < source.num && slot < NN; ++slot)
+            {
+                const int neighbor = source.cell2cell[slot];
+                if (neighbor < 0 || neighbor >= realCellCount) continue;
+                const double w0 = this->cellNeff[(size_t)gid];
+                const double w1 = this->cellNeff[(size_t)neighbor];
+                maxNeighborRatio = std::max(maxNeighborRatio, std::max(w0 / w1, w1 / w0));
+            }
+        }
+    }
+
+    cout << "CELL_WEIGHT enabled=1 targetParticles=" << this->targetParticlesPerCell
+         << " min=" << minWeight
+         << " max=" << maxWeight
+         << " globalRatio=" << maxWeight / minWeight
+         << " maxNeighborRatio=" << maxNeighborRatio << endl;
+    if (maxNeighborRatio > CellWeightLargeNeighborRatioWarning)
+    {
+        cerr << "CELL_WEIGHT_LARGE_NEIGHBOR_RATIO ratio=" << maxNeighborRatio
+             << " warning=" << CellWeightLargeNeighborRatioWarning << endl;
+    }
+    return true;
 }
 
 void meshImport::calGridpar()

@@ -93,6 +93,8 @@ public:
     bool installLocalGeometryTo(ProcessDSMC &process);
 
     bool broadcastInitialParticleCounts(std::vector<int> &npcByCell) const;
+
+    bool broadcastCellWeights(std::vector<double> &weightsByCell) const;
 private:
 
     struct LocalGeometryCounts3D

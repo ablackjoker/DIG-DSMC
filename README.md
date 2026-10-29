@@ -15,6 +15,7 @@ The original Apollo case, mesh, and supercomputer build/job scripts are preserve
 | Mach / Knudsen number | 0 / 0.1 |
 | Initial and wall temperature | 273.15 K |
 | Initial particles | 30 per cell; 15360 total |
+| Rotational collision number / relaxation probability | 2.59 / 0.25 |
 | Random seed | 20261015; streams derived from MPI rank |
 | DSMC steps / sampling start | 3000 / 400 |
 | DIG interval / NS iteration cap | 500 steps / 200 iterations per call |
@@ -86,9 +87,9 @@ For your own run, replace `runs/cavity_kn01_reference` with `runs/cavity`. Use `
 
 | Global mean | Equilibrium | Reference result | Tolerance |
 | --- | ---: | ---: | --- |
-| Normalized density | 1 | 0.9995242 | +/-0.5% of equilibrium |
-| Translational temperature | 273.15 K | 272.9794 K | +/-0.5% of equilibrium |
-| Rotational temperature | 273.15 K | 272.9150 K | +/-0.5% of equilibrium |
+| Normalized density | 1 | 0.9994865 | +/-0.5% of equilibrium |
+| Translational temperature | 273.15 K | 273.2890 K | +/-0.5% of equilibrium |
+| Rotational temperature | 273.15 K | 273.4172 K | +/-0.5% of equilibrium |
 
 Each normalized mean velocity component must be within +/-0.001; spatial RMS density/temperature errors and RMS speed must be at most 0.015. These are regression limits for global statistics, not per-cell bounds or confidence intervals. Full definitions and exact reference values are in [reference_results.json](verification/reference_results.json).
 

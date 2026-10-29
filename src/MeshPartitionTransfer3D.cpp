@@ -161,6 +161,25 @@ bool MeshPartitionTransfer3D::broadcastInitialParticleCounts(std::vector<int> &n
     return MPI_Bcast(npcByCell.data(), m_partinit->mess.Ncell, MPI_INT, 0, m_mpi->comm) == MPI_SUCCESS;
 }
 
+bool MeshPartitionTransfer3D::broadcastCellWeights(std::vector<double> &weightsByCell) const
+{
+    if (m_partinit == nullptr || m_mpi == nullptr) return false;
+
+    const int ncell = m_partinit->mess.Ncell;
+    if (ncell <= 0) return false;
+    weightsByCell.assign((std::size_t)ncell, m_partinit->mess.Neff);
+    int valid = 1;
+    if (isRoot())
+    {
+        valid = m_mesh != nullptr && (int)m_mesh->cellNeff.size() == ncell;
+        if (valid) weightsByCell = m_mesh->cellNeff;
+    }
+    if (MPI_Bcast(&valid, 1, MPI_INT, 0, m_mpi->comm) != MPI_SUCCESS || !valid)
+        return false;
+
+    return MPI_Bcast(weightsByCell.data(), ncell, MPI_DOUBLE, 0, m_mpi->comm) == MPI_SUCCESS;
+}
+
 bool MeshPartitionTransfer3D::isRoot() const
 {
     return m_mpi != nullptr && m_mpi->root();
