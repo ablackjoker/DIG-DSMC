@@ -1,6 +1,4 @@
-/*
- * Particle count adjustment, cell sampling, and initial particle creation.
- */
+// Distributes the initial mesh and generates particle positions, velocities, and rotational energies.
 
 # include "MeshparticalInitial.h"
 # include "meshImport.h"
@@ -27,24 +25,12 @@ namespace
 
 struct ParticleInitialLocalOps
 {
-/*
- * validLocalNodeIndex: works with mesh topology or geometric intersections.
- * Params: idx, xyz; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
+
     static bool validLocalNodeIndex(int idx, const vector<double>& xyz)
     {
         return idx >= 0 && (size_t)idx < xyz.size() / 3u;
     }
-/*
- * tetAbsVolume: works with mesh topology or geometric intersections.
- * Params: xyz, n0, n1, n2, n3; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
+
     static double tetAbsVolume(const vector<double>& xyz,
                                int n0, int n1, int n2, int n3)
     {
@@ -62,26 +48,14 @@ struct ParticleInitialLocalOps
         const double crz = bx * cy - by * cx;
         return std::fabs(ax * crx + ay * cry + az * crz) / 6.0;
     }
-/*
- * positiveUniform: performs one solver support operation.
- * Params: dis, gen; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
+
     static double positiveUniform(std::uniform_real_distribution<double>& dis,
                                   std::mt19937& gen)
     {
         const double r = dis(gen);
         return (r > 0.0) ? r : 1.0e-300;
     }
-/*
- * randomBarycentric4: works with mesh topology or geometric intersections.
- * Params: dis, gen, a, b, c, d; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
+
     static void randomBarycentric4(std::uniform_real_distribution<double>& dis,
                                    std::mt19937& gen,
                                    double& a,
@@ -106,13 +80,6 @@ struct ParticleInitialLocalOps
     }
 };
 
-/*
- * appendVertexTet: works with mesh topology or geometric intersections.
- * Params: init, n0, n1, n2, n3, tets; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 static bool appendVertexTet(const MeshparticalInitial& init,
                             int n0, int n1, int n2, int n3,
                             vector<InitTet>& tets)
@@ -132,13 +99,6 @@ static bool appendVertexTet(const MeshparticalInitial& init,
     return true;
 }
 
-/*
- * collectCellUniqueNodes: works with mesh topology or geometric intersections.
- * Params: init, cell, uniqueNodes; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 static bool collectCellUniqueNodes(const MeshparticalInitial& init,
                                    const DsmcCell& cell,
                                    vector<int>& uniqueNodes)
@@ -162,13 +122,6 @@ static bool collectCellUniqueNodes(const MeshparticalInitial& init,
     return true;
 }
 
-/*
- * appendTetCellTets: works with mesh topology or geometric intersections.
- * Params: init, cell, tets; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 static bool appendTetCellTets(const MeshparticalInitial& init,
                               const DsmcCell& cell,
                               vector<InitTet>& tets)
@@ -182,13 +135,6 @@ static bool appendTetCellTets(const MeshparticalInitial& init,
                            tets);
 }
 
-/*
- * appendPyramidCellTets: works with mesh topology or geometric intersections.
- * Params: init, cell, tets; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 static bool appendPyramidCellTets(const MeshparticalInitial& init,
                                   const DsmcCell& cell,
                                   vector<InitTet>& tets)
@@ -251,13 +197,6 @@ static bool appendPyramidCellTets(const MeshparticalInitial& init,
                            tets);
 }
 
-/*
- * appendCenterFaceTet: works with mesh topology or geometric intersections.
- * Params: init, cellLocal, faceLocal, tri, tets; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 static bool appendCenterFaceTet(const MeshparticalInitial& init,
                                 int cellLocal,
                                 int faceLocal,
@@ -295,13 +234,6 @@ static bool appendCenterFaceTet(const MeshparticalInitial& init,
     return true;
 }
 
-/*
- * appendCenterFaceTets: works with mesh topology or geometric intersections.
- * Params: init, cellLocal, cell, tets; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 static bool appendCenterFaceTets(const MeshparticalInitial& init,
                                  int cellLocal,
                                  const DsmcCell& cell,
@@ -337,13 +269,6 @@ static bool appendCenterFaceTets(const MeshparticalInitial& init,
     return !tets.empty();
 }
 
-/*
- * buildCellInitTets: works with mesh topology or geometric intersections.
- * Params: init, cellLocal, tets; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 static bool buildCellInitTets(const MeshparticalInitial& init,
                               int cellLocal,
                               vector<InitTet>& tets)
@@ -360,35 +285,14 @@ static bool buildCellInitTets(const MeshparticalInitial& init,
     return appendCenterFaceTets(init, cellLocal, cell, tets);
 }
 
-/*
- * MeshparticalInitial: prepares derived solver state.
- * Params: none; returns: MeshparticalInitial ::.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 MeshparticalInitial :: MeshparticalInitial()
 {    
 }
 
-/*
- * ~MeshparticalInitial: releases owned buffers and MPI helper state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 MeshparticalInitial :: ~MeshparticalInitial()
 {
 }
 
-/*
- * MeshparticalInitial: prepares derived solver state.
- * Params: mesh, mess, mpass, mpiCtx; returns: MeshparticalInitial ::.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 MeshparticalInitial :: MeshparticalInitial(meshImport *mesh, meshMessage mess, MessagePassing *mpass, const MpiContext& mpiCtx)
 {
     this->mpi = &mpiCtx;
@@ -418,6 +322,11 @@ MeshparticalInitial :: MeshparticalInitial(meshImport *mesh, meshMessage mess, M
              << " rank=" << this->rank << endl;
         return;
     }
+    if (!transfer.broadcastCellWeights(this->cellNeffByGlobal))
+    {
+        cout << "MESH_PARTITION_INITIAL_WEIGHT_BCAST_FAIL" << " rank=" << this->rank << endl;
+        return;
+    }
     this->partitionReady = true;
     if(active)
     {
@@ -432,13 +341,17 @@ MeshparticalInitial :: MeshparticalInitial(meshImport *mesh, meshMessage mess, M
     }
 }
 
-/*
- * module_variables: performs one solver support operation.
- * Params: none; returns: void MeshparticalInitial.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
+double MeshparticalInitial::particleWeight(int globalCell) const
+{
+    if (globalCell >= 0 && globalCell < (int)this->cellNeffByGlobal.size())
+    {
+        const double weight = this->cellNeffByGlobal[(size_t)globalCell];
+        if (weight > 0.0 && std::isfinite(weight))
+            return weight;
+    }
+    return this->mess.Neff;
+}
+
 void MeshparticalInitial ::module_variables()
 {
     this->rank_cell_all.reserve(this->mess.Ncell);
@@ -448,13 +361,6 @@ void MeshparticalInitial ::module_variables()
     this->cell_particle_reserve_hint.assign((std::size_t)this->mess.Ncell, 0);
 }
 
-/*
- * allocateOwnedParticleBuckets: updates particles or particle-derived state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 void MeshparticalInitial::allocateOwnedParticleBuckets()
 {
     const int nOwned = std::max(0, this->my_owned_ncell);
@@ -471,13 +377,6 @@ void MeshparticalInitial::allocateOwnedParticleBuckets()
     }
 }
 
-/*
- * Np_tri_inititial: works with mesh topology or geometric intersections.
- * Params: i, Np_tri, Np_exa; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 void MeshparticalInitial::Np_tri_inititial(int i, std::vector<double>& Np_tri, int Np_exa)
 {
     vector<InitTet> initTets;
@@ -513,13 +412,6 @@ void MeshparticalInitial::Np_tri_inititial(int i, std::vector<double>& Np_tri, i
     adjust_particles(Np_tri, (int)Np_tri.size(), selectN);
 }
 
-/*
- * CreateParticlesnode: works with mesh topology or geometric intersections.
- * Params: j, i, index0, index1, index2, center; returns: void MeshparticalInitial ::.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 void MeshparticalInitial :: CreateParticlesnode(int j,int i, int index0, int index1, int index2, const double center[DIM])
 {
     particle parts = this->velocityLocationGenerate(j, index0, index1, index2, center);
@@ -538,6 +430,7 @@ void MeshparticalInitial :: CreateParticlesnode(int j,int i, int index0, int ind
         parts.p_rank_serial = this->c_rank;
         parts.p_mesh_serial = localCell;
         parts.dt_left = 0.0;
+        parts.p_weight_origin_gid = -1;
         bucket.push_back(parts);
         if (gid >= 0 && gid < (int)this->cell_particle_reserve_hint.size())
         {
@@ -548,13 +441,6 @@ void MeshparticalInitial :: CreateParticlesnode(int j,int i, int index0, int ind
     }
 }
 
-/*
- * CreateParticlesnode: works with mesh topology or geometric intersections.
- * Params: j, i, index0, index1, index2, index3; returns: void MeshparticalInitial ::.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 void MeshparticalInitial :: CreateParticlesnode(int j,int i, int index0, int index1, int index2, int index3)
 {
     particle parts = this->velocityLocationGenerate(j, index0, index1, index2, index3);
@@ -573,6 +459,7 @@ void MeshparticalInitial :: CreateParticlesnode(int j,int i, int index0, int ind
         parts.p_rank_serial = this->c_rank;
         parts.p_mesh_serial = localCell;
         parts.dt_left = 0.0;
+        parts.p_weight_origin_gid = -1;
         bucket.push_back(parts);
         if (gid >= 0 && gid < (int)this->cell_particle_reserve_hint.size())
         {
@@ -583,13 +470,6 @@ void MeshparticalInitial :: CreateParticlesnode(int j,int i, int index0, int ind
     }
 }
 
-/*
- * meshfillpar: performs one solver support operation.
- * Params: i, Np_tri; returns: void MeshparticalInitial ::.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 void MeshparticalInitial :: meshfillpar(int i,vector<double>& Np_tri)
 {
     vector<InitTet> initTets;
@@ -636,13 +516,6 @@ void MeshparticalInitial :: meshfillpar(int i,vector<double>& Np_tri)
     }
 }
 
-/*
- * velocityLocationGenerate: updates particles or particle-derived state.
- * Params: i, index0, index1, index2, center; returns: updated particle.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 particle MeshparticalInitial :: velocityLocationGenerate(int i, int index0, int index1, int index2, const double center[DIM])
 {
     particle ipart;
@@ -678,13 +551,6 @@ particle MeshparticalInitial :: velocityLocationGenerate(int i, int index0, int 
     return ipart;
 }
 
-/*
- * velocityLocationGenerate: updates particles or particle-derived state.
- * Params: i, index0, index1, index2, index3; returns: updated particle.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 particle MeshparticalInitial :: velocityLocationGenerate(int i, int index0, int index1, int index2, int index3)
 {
     particle ipart;
@@ -720,13 +586,6 @@ particle MeshparticalInitial :: velocityLocationGenerate(int i, int index0, int 
     return ipart;
 }
 
-/*
- * Iround: performs one solver support operation.
- * Params: x; returns: int MeshparticalInitial ::.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 int MeshparticalInitial :: Iround(double x)
 {
     int x_f = 0;
@@ -742,22 +601,8 @@ int MeshparticalInitial :: Iround(double x)
     return x_f;
 }
 
-/*
- * adjust_particles: updates particles or particle-derived state.
- * Params: regions, size, delta; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 void MeshparticalInitial::adjust_particles(vector<double>& regions, int size, int delta) {
-/*
- * rng: performs one solver support operation.
- * Params: std::random_device{}(); returns: std::mt19937.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
-    static std::mt19937 rng(std::random_device{}());
+    static std::mt19937 rng(RANDOM_SEED + static_cast<unsigned int>(rank) + 0x9e3779b9u);
     const int abs_delta = std::abs(delta);
     const bool add = delta > 0;
     if(abs_delta > size) { 
@@ -788,13 +633,6 @@ void MeshparticalInitial::adjust_particles(vector<double>& regions, int size, in
     }
 }
 
-/*
- * Collision_constant_initial: updates particles or particle-derived state.
- * Params: none; returns: void MeshparticalInitial ::.
- * Flow:
- *   - select collision pairs.
- *   - apply acceptance model.
- */
 void MeshparticalInitial :: Collision_constant_initial()
 {
     const int nOwned = this->my_owned_ncell; 
@@ -809,26 +647,12 @@ void MeshparticalInitial :: Collision_constant_initial()
     }
 }
 
-/*
- * crossProduct: performs one solver support operation.
- * Params: vecA, vecB, result; returns: void MeshparticalInitial ::.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 void MeshparticalInitial :: crossProduct(const double* vecA, const double* vecB, double* result) {
     result[0] = vecA[1]*vecB[2] - vecA[2]*vecB[1];
     result[1] = vecA[2]*vecB[0] - vecA[0]*vecB[2];
     result[2] = vecA[0]*vecB[1] - vecA[1]*vecB[0];
 }
 
-/*
- * dotProduct: performs one solver support operation.
- * Params: vecA, vecB, size; returns: double MeshparticalInitial ::.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- */
 double MeshparticalInitial :: dotProduct(const double* vecA, const double* vecB, int size) {
     double result = 0.0;
     for (int i = 0; i < size; i++) {

@@ -1,6 +1,4 @@
-/*
- * Particle tracing, boundary handling, collisions, statistics, and output.
- */
+// Advances DSMC particles through transport, boundary interactions, collisions, and sampling.
 
 # include "ProcessDSMC.h"
 #include <chrono>
@@ -32,17 +30,6 @@ constexpr double kDsmc2NsMinSampleCount = 3.0;
 constexpr double kMacroMinDivisor = 1.0e-12;
 }
 
-/*
- * mapIncomingFaceCellLocal: works with mesh topology or geometric intersections.
- * Params: process, gface, gcell, crossfid_local, cellid_local; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool ProcessDSMC::ParticleTransportOps::mapIncomingFaceCellLocal(
     const ProcessDSMC& process,
     int gface, int gcell,
@@ -55,97 +42,31 @@ bool ProcessDSMC::ParticleTransportOps::mapIncomingFaceCellLocal(
     return (cellid_local >= 0 && crossfid_local >= 0);
 }
 
-/*
- * macroOffset: couples DSMC data with macroscopic fields.
- * Params: localCell, index; returns: index, count, owner, or status value.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 int ProcessDSMC::macroOffset(int localCell, MacroIndex index)
 {
     return localCell * MACRO_WIDTH + index;
 }
 
-/*
- * axisOffset: performs one solver support operation.
- * Params: localCell, index; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 int ProcessDSMC::axisOffset(int localCell, AxisIndex index)
 {
     return localCell * AXIS_WIDTH + index;
 }
 
-/*
- * heatOffset: performs one solver support operation.
- * Params: localCell, index; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 int ProcessDSMC::heatOffset(int localCell, HeatIndex index)
 {
     return localCell * HEAT_WIDTH + index;
 }
 
-/*
- * stressOffset: performs one solver support operation.
- * Params: localCell, index; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 int ProcessDSMC::stressOffset(int localCell, StressIndex index)
 {
     return localCell * STRESS_WIDTH + index;
 }
 
-/*
- * rotHeatOffset: performs one solver support operation.
- * Params: localCell, index; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 int ProcessDSMC::rotHeatOffset(int localCell, RotHeatIndex index)
 {
     return localCell * ROT_HEAT_WIDTH + index;
 }
 
-/*
- * traceParticleDtleft: updates particles or particle-derived state.
- * Params: self, part, cellid, crossfid, tag_triangle, dtleft, ifout, inclusive_hit; returns: ProcessDSMC::ParticleTraceOutcome.
- * Flow:
- *   - trace movement.
- *   - find the next face hit.
- *   - store local or migrating particles.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 ProcessDSMC::ParticleTraceOutcome ProcessDSMC::ParticleTransportOps::traceParticleDtleft(
     ProcessDSMC& self, particle& part, int& cellid, int& crossfid,
     int& tag_triangle, double& dtleft, int& ifout, bool inclusive_hit)
@@ -220,48 +141,15 @@ ProcessDSMC::ParticleTraceOutcome ProcessDSMC::ParticleTransportOps::tracePartic
     return ParticleTraceOutcome::LocalDone;
 }
 
-/*
- * ProcessDSMC: performs one solver support operation.
- * Params: none; returns: ProcessDSMC ::.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 ProcessDSMC :: ProcessDSMC()
 {
 }
 
-/*
- * ~ProcessDSMC: releases owned buffers and MPI helper state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 ProcessDSMC :: ~ProcessDSMC()
 {
     macro_list_delete();
 }
 
-/*
- * ProcessDSMC: performs one solver support operation.
- * Params: mesh, mess, partinit, mpiCtx; returns: ProcessDSMC ::.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 ProcessDSMC :: ProcessDSMC(meshImport *mesh, meshMessage mess, MeshparticalInitial *partinit, const MpiContext& mpiCtx)
 {
     this->mpi = &mpiCtx;
@@ -287,17 +175,6 @@ ProcessDSMC :: ProcessDSMC(meshImport *mesh, meshMessage mess, MeshparticalIniti
     }
 }
 
-/*
- * macro_list_setup: couples DSMC data with macroscopic fields.
- * Params: none; returns: none.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::macro_list_setup()
 {
     int eNface = this->mess.eNface;
@@ -337,17 +214,6 @@ void ProcessDSMC::macro_list_setup()
     this->dsmc2ns_sparse_accum_steps.assign((std::size_t)this->iNcell, 0);
 }
 
-/*
- * variable_deep_copy: performs one solver support operation.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::variable_deep_copy()
 {
     this->rank_cell_all.resize(this->ncell,0);
@@ -395,17 +261,6 @@ void ProcessDSMC::variable_deep_copy()
     unordered_map<int, int>().swap(this->partinit->face_gid2local);
 }
 
-/*
- * initial_chache_storage: prepares derived solver state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::initial_chache_storage()
 {
     this->migrate_send_particles.resize(this->c_size);
@@ -414,17 +269,6 @@ void ProcessDSMC::initial_chache_storage()
     this->dtleft_recv_packets.resize(this->c_size);
 }
 
-/*
- * boundaryClassification: parses mesh or configuration input.
- * Params: none; returns: success or decision flag.
- * Flow:
- *   - decode the input record.
- *   - fill mesh arrays.
- *   - report parse status.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool ProcessDSMC::boundaryClassification()
 {
     this->inletVis.clear();
@@ -484,17 +328,6 @@ bool ProcessDSMC::boundaryClassification()
     return true;
 }
 
-/*
- * wall_normal: applies boundary-condition behavior.
- * Params: none; returns: none.
- * Flow:
- *   - select boundary faces.
- *   - apply the physical model.
- *   - store flux or particle effects.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::wall_normal()
 {
     wallMap.clear();
@@ -511,17 +344,6 @@ void ProcessDSMC::wall_normal()
     rebuildBoundaryEmitCache();
 }
 
-/*
- * rebuildBoundaryDerivedState: applies boundary-condition behavior.
- * Params: none; returns: none.
- * Flow:
- *   - select boundary faces.
- *   - apply the physical model.
- *   - store flux or particle effects.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::rebuildBoundaryDerivedState()
 {
     if (this->mpi != nullptr && !this->mpi->active()) return;
@@ -529,17 +351,6 @@ void ProcessDSMC::rebuildBoundaryDerivedState()
     wall_normal();
 }
 
-/*
- * reservoirConfigForState: performs one solver support operation.
- * Params: state; returns: reference or pointer to existing state.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 const DsmcReservoirBoundaryConfig& ProcessDSMC::reservoirConfigForState(DsmcReservoirBoundaryState state) const
 {
     switch (state)
@@ -552,34 +363,12 @@ const DsmcReservoirBoundaryConfig& ProcessDSMC::reservoirConfigForState(DsmcRese
     }
 }
 
-/*
- * shouldInjectBoundary: applies boundary-condition behavior.
- * Params: state; returns: success or decision flag.
- * Flow:
- *   - select boundary faces.
- *   - apply the physical model.
- *   - store flux or particle effects.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool ProcessDSMC::shouldInjectBoundary(DsmcReservoirBoundaryState state) const
 {
     const DsmcReservoirBoundaryConfig& config = reservoirConfigForState(state);
     return config.enabled && config.injectParticles;
 }
 
-/*
- * rebuildBoundaryEmitCache: applies boundary-condition behavior.
- * Params: none; returns: none.
- * Flow:
- *   - select boundary faces.
- *   - apply the physical model.
- *   - store flux or particle effects.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::rebuildBoundaryEmitCache()
 {
     if (!boundaryEmitCacheDirty) return;
@@ -639,17 +428,7 @@ void ProcessDSMC::rebuildBoundaryEmitCache()
                                     patch.normal[1] * patch.normal[1] +
                                     patch.normal[2] * patch.normal[2]);
         if (!(patch.area > 0.0) || !std::isfinite(patch.area) ||
-/*
- * !: performs one solver support operation.
- * Params: 0.0; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
             !(patch.normalMag > 0.0) || !std::isfinite(patch.normalMag))
         {
             cout << "BOUNDARY_EMIT_CACHE_BAD_PATCH"
@@ -767,17 +546,6 @@ void ProcessDSMC::rebuildBoundaryEmitCache()
     boundaryEmitCacheDirty = false;
 }
 
-/*
- * ownerOfGlobalCell: updates partition ownership or load data.
- * Params: gid; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 int ProcessDSMC::ownerOfGlobalCell(int gid) const
 {
     if (gid < 0 || gid >= this->ncell) return -1;
@@ -793,17 +561,6 @@ int ProcessDSMC::ownerOfGlobalCell(int gid) const
     return -1;
 }
 
-/*
- * localOfGlobalCell: works with mesh topology or geometric intersections.
- * Params: gid; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 int ProcessDSMC::localOfGlobalCell(int gid) const
 {
     if (gid < 0 || gid >= this->ncell) return -1;
@@ -812,50 +569,17 @@ int ProcessDSMC::localOfGlobalCell(int gid) const
     return it->second;
 }
 
-/*
- * isOwnedLocalCell: works with mesh topology or geometric intersections.
- * Params: local; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool ProcessDSMC::isOwnedLocalCell(int local) const
 {
     return local >= 0 && local < this->iNcell;
 }
 
-/*
- * globalOfLocalCell: works with mesh topology or geometric intersections.
- * Params: local; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 int ProcessDSMC::globalOfLocalCell(int local) const
 {
     if (local < 0 || local >= (int)this->local_cells.size()) return -1;
     return this->local_cells[(std::size_t)local];
 }
 
-/*
- * currParticles: updates particles or particle-derived state.
- * Params: globalCell; returns: reference or pointer to existing state.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 ParticleBucketSoA &ProcessDSMC::currParticles(int globalCell)
 {
     const int localCell = this->localOfGlobalCell(globalCell);
@@ -875,17 +599,7 @@ ParticleBucketSoA &ProcessDSMC::currParticles(int globalCell)
     }
     return this->partinit->cell_particles_curr[(std::size_t)localCell];
 }
-/*
- * currParticles: updates particles or particle-derived state.
- * Params: globalCell; returns: reference or pointer to existing state.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 const ParticleBucketSoA &ProcessDSMC::currParticles(int globalCell) const
 {
     const int localCell = this->localOfGlobalCell(globalCell);
@@ -906,17 +620,49 @@ const ParticleBucketSoA &ProcessDSMC::currParticles(int globalCell) const
     return this->partinit->cell_particles_curr[(std::size_t)localCell];
 }
 
-/*
- * particleCount: updates particles or particle-derived state.
- * Params: globalCell; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+int ProcessDSMC::cellWeightCopyCount(const particle& part, int destinationGlobalCell)
+{
+    if (this->partinit == nullptr) return 1;
+
+    int sourceGlobalCell = part.p_weight_origin_gid;
+    if (sourceGlobalCell < 0) sourceGlobalCell = destinationGlobalCell;
+    if (sourceGlobalCell == destinationGlobalCell) return 1;
+
+    const double sourceWeight = this->partinit->particleWeight(sourceGlobalCell);
+    const double destinationWeight = this->partinit->particleWeight(destinationGlobalCell);
+    if (!(sourceWeight > 0.0) || !(destinationWeight > 0.0) ||
+        !std::isfinite(sourceWeight) || !std::isfinite(destinationWeight))
+    {
+        cerr << "CELL_WEIGHT_CONVERSION_INVALID source=" << sourceGlobalCell
+             << " destination=" << destinationGlobalCell
+             << " sourceWeight=" << sourceWeight
+             << " destinationWeight=" << destinationWeight << endl;
+        MPI_Abort(this->comm, 1);
+        return 0;
+    }
+
+    const double ratio = sourceWeight / destinationWeight;
+    if (!(ratio >= 0.0) || !std::isfinite(ratio) || ratio > 1.0e8)
+    {
+        cerr << "CELL_WEIGHT_CONVERSION_RATIO_INVALID source=" << sourceGlobalCell
+             << " destination=" << destinationGlobalCell
+             << " ratio=" << ratio << endl;
+        MPI_Abort(this->comm, 1);
+        return 0;
+    }
+    if (std::fabs(ratio - 1.0) <= 1.0e-12) return 1;
+
+    int copies = (int)std::floor(ratio);
+    const double fractional = ratio - (double)copies;
+    if (fractional > 0.0)
+    {
+        auto& gen = this->partinit->thread_rng();
+        auto& dis = this->partinit->get_uniform();
+        if (dis(gen) < fractional) ++copies;
+    }
+    return copies;
+}
+
 int ProcessDSMC::particleCount(int globalCell) const
 {
     if (this->partinit == nullptr)
@@ -929,17 +675,6 @@ int ProcessDSMC::particleCount(int globalCell) const
     return (int)this->partinit->cell_particles_curr[(std::size_t)localCell].size();
 }
 
-/*
- * checkParticleBucketConsistency: updates particles or particle-derived state.
- * Params: stage; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool ProcessDSMC::checkParticleBucketConsistency(const char* stage) const
 {
     if (this->partinit == nullptr) return true;
@@ -986,34 +721,12 @@ bool ProcessDSMC::checkParticleBucketConsistency(const char* stage) const
     return true;
 }
 
-/*
- * clearNextParticleBuffers: updates particles or particle-derived state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::clearNextParticleBuffers()
 {
     if (this->partinit == nullptr) return;
     this->partinit->cell_particles_next.clear();
 }
 
-/*
- * clearNextParticles: updates particles or particle-derived state.
- * Params: globalCell; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::clearNextParticles(int globalCell)
 {
     if (this->partinit == nullptr) return;
@@ -1025,32 +738,10 @@ void ProcessDSMC::clearNextParticles(int globalCell)
     }
 }
 
-/*
- * macro_list_delete: couples DSMC data with macroscopic fields.
- * Params: none; returns: none.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::macro_list_delete()
 {
 }
 
-/*
- * processFacesQuadNormals: works with mesh topology or geometric intersections.
- * Params: visList; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::processFacesQuadNormals(const vector<int>& visList)
 {
     for (int edgeid : visList)
@@ -1127,17 +818,6 @@ void ProcessDSMC::processFacesQuadNormals(const vector<int>& visList)
     }
 }
 
-/*
- * ray_triangle_intersect: works with mesh topology or geometric intersections.
- * Params: location, velocity, Apointer, Bpointer, Cpointer, t, u, v; returns: bool ProcessDSMC ::.
- * Flow:
- *   - trace movement.
- *   - find the next face hit.
- *   - store local or migrating particles.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool ProcessDSMC :: ray_triangle_intersect(double* location, double* velocity, double* Apointer,double* Bpointer, double* Cpointer, double& t, double& u, double& v)
 {
     double ABedge[3] = {Bpointer[0] - Apointer[0], Bpointer[1] - Apointer[1], Bpointer[2] - Apointer[2]};
@@ -1159,18 +839,7 @@ bool ProcessDSMC :: ray_triangle_intersect(double* location, double* velocity, d
     if(t > eps) {return true;}
     else{return false;}
 }   
- 
-/*
- * intersectCachedTri: works with mesh topology or geometric intersections.
- * Params: tri, part, t; returns: success or decision flag.
- * Flow:
- *   - trace movement.
- *   - find the next face hit.
- *   - store local or migrating particles.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 bool ProcessDSMC::intersectCachedTri(const FaceTriCache& tri, const particle* part, double& t) const
 {
     const double* location = part->p_location;
@@ -1196,17 +865,6 @@ bool ProcessDSMC::intersectCachedTri(const FaceTriCache& tri, const particle* pa
     return t > eps;
 }
 
-/*
- * tryCachedCellIntersection: works with mesh topology or geometric intersections.
- * Params: part, Ncell_id, min_t, acrossfid, tag_triangle, hit_face; returns: success or decision flag.
- * Flow:
- *   - trace movement.
- *   - find the next face hit.
- *   - store local or migrating particles.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool ProcessDSMC::tryCachedCellIntersection(
     particle* part, int Ncell_id, double& min_t, int acrossfid,
     int& tag_triangle, int& hit_face) const
@@ -1250,17 +908,6 @@ bool ProcessDSMC::tryCachedCellIntersection(
     return true;
 }
 
-/*
- * tryTri: works with mesh topology or geometric intersections.
- * Params: faceid, triTag, A, B, C, part, bestT, bestFace, bestTri; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::tryTri(int faceid, int triTag, double *A,  double *B,  double *C, particle* part, double& bestT, int& bestFace, int& bestTri)
 {
     double t, u, v; 
@@ -1275,17 +922,6 @@ void ProcessDSMC::tryTri(int faceid, int triTag, double *A,  double *B,  double 
     }
 }
 
-/*
- * loadPoint: updates partition ownership or load data.
- * Params: idx, P; returns: none.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::loadPoint(int idx, double *P)
 {
     const int pointBase = axisOffset(idx, AXIS_X);
@@ -1293,17 +929,7 @@ void ProcessDSMC::loadPoint(int idx, double *P)
     P[AXIS_Y] = this->localPointXY[pointBase + AXIS_Y];
     P[AXIS_Z] = this->localPointXY[pointBase + AXIS_Z];
 }
-/*
- * tetra_intersection: works with mesh topology or geometric intersections.
- * Params: part, Ncell_id, min_t, acrossfid; returns: int ProcessDSMC ::.
- * Flow:
- *   - trace movement.
- *   - find the next face hit.
- *   - store local or migrating particles.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 int ProcessDSMC :: tetra_intersection(particle* part, int Ncell_id, double& min_t, int acrossfid)
 {
     min_t = DBL_MAX;
@@ -1333,17 +959,6 @@ int ProcessDSMC :: tetra_intersection(particle* part, int Ncell_id, double& min_
     return hit_face;
 }
 
-/*
- * loadFacePointsSafe: updates partition ownership or load data.
- * Params: faceid, facePoints; returns: success or decision flag.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool ProcessDSMC::loadFacePointsSafe(int faceid, FacePointSet& facePoints) const
 {
     if (faceid < 0 || faceid >= (int)this->edges.size()) return false;
@@ -1365,17 +980,6 @@ bool ProcessDSMC::loadFacePointsSafe(int faceid, FacePointSet& facePoints) const
     return true;
 }
 
-/*
- * decodeFaceTriangles: works with mesh topology or geometric intersections.
- * Params: faceid, facePoints, triangles; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool ProcessDSMC::decodeFaceTriangles(int faceid, const FacePointSet& facePoints,
                                       FaceTriangleList& triangles) const
 {
@@ -1428,17 +1032,6 @@ bool ProcessDSMC::decodeFaceTriangles(int faceid, const FacePointSet& facePoints
     return true;
 }
 
-/*
- * intersectFaceTriangles: works with mesh topology or geometric intersections.
- * Params: faceid, skipTriTag, part, bestHit; returns: none.
- * Flow:
- *   - trace movement.
- *   - find the next face hit.
- *   - store local or migrating particles.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::intersectFaceTriangles(int faceid, int skipTriTag, particle* part,
                                          IntersectionHit& bestHit)
 {
@@ -1470,17 +1063,6 @@ void ProcessDSMC::intersectFaceTriangles(int faceid, int skipTriTag, particle* p
     }
 }
 
-/*
- * intersectFallbackCell: works with mesh topology or geometric intersections.
- * Params: part, cellLocal, acrossFace, previousTri, min_t, tag_triangle; returns: index, count, owner, or status value.
- * Flow:
- *   - trace movement.
- *   - find the next face hit.
- *   - store local or migrating particles.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 int ProcessDSMC::intersectFallbackCell(particle* part, int cellLocal, int acrossFace,
                                        int previousTri, double& min_t, int& tag_triangle)
 {
@@ -1523,17 +1105,6 @@ int ProcessDSMC::intersectFallbackCell(particle* part, int cellLocal, int across
     return bestHit.face;
 }
 
-/*
- * check_intersection2: works with mesh topology or geometric intersections.
- * Params: part, Ncell_id, min_t, acrossfid, tag_triangle; returns: int ProcessDSMC ::.
- * Flow:
- *   - trace movement.
- *   - find the next face hit.
- *   - store local or migrating particles.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 int ProcessDSMC :: check_intersection2(particle* part, int Ncell_id, double& min_t, int acrossfid,int& tag_triangle)
 {
     if (Ncell_id < 0 || Ncell_id >= (int)this->cells.size())
@@ -1550,17 +1121,6 @@ int ProcessDSMC :: check_intersection2(particle* part, int Ncell_id, double& min
     return intersectFallbackCell(part, Ncell_id, acrossfid, prev_tri, min_t, tag_triangle);
 }
 
-/*
- * normalize: performs one solver support operation.
- * Params: vec; returns: void ProcessDSMC ::.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC :: normalize(double vec[3])
 {
     double length = sqrt(vec[0]*vec[0] + vec[1]*vec[1] + vec[2]*vec[2]);
@@ -1569,17 +1129,6 @@ void ProcessDSMC :: normalize(double vec[3])
     vec[2] /= length;
 }
 
-/*
- * buildRotationMatrix: works with mesh topology or geometric intersections.
- * Params: norm, R); returns: void ProcessDSMC ::.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC :: buildRotationMatrix(double* norm, double (*R)[3]) 
 {
     double t1[3], t2[3];
@@ -1602,17 +1151,6 @@ void ProcessDSMC :: buildRotationMatrix(double* norm, double (*R)[3])
     R[2][0] = t1[2]; R[2][1] = t2[2]; R[2][2] = norm[2];
 }
 
-/*
- * scalar_product: performs one solver support operation.
- * Params: norm1, norm2, scalar, dim; returns: void ProcessDSMC ::.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC :: scalar_product(double* norm1, double* norm2, double scalar, int dim)
 {
     for(int i = 0; i < dim; i++)
@@ -1621,17 +1159,6 @@ void ProcessDSMC :: scalar_product(double* norm1, double* norm2, double scalar, 
     }
 }
 
-/*
- * ownsBoundaryFace: works with mesh topology or geometric intersections.
- * Params: localFace; returns: success or decision flag.
- * Flow:
- *   - select boundary faces.
- *   - apply the physical model.
- *   - store flux or particle effects.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool ProcessDSMC::ownsBoundaryFace(int localFace) const
 {
     if (this->mpi == nullptr || !this->mpi->active()) return false;
@@ -1645,20 +1172,7 @@ bool ProcessDSMC::ownsBoundaryFace(int localFace) const
     return ownedCell >= 0 && this->ownerOfGlobalCell(ownedCell) == this->c_rank;
 }
 
-/*
- * recordBoundaryStressHeat: applies boundary-condition behavior.
- * Params: localFace, velocityPre, velocityPost, rotPre, rotPost; returns: none.
- * Flow:
- *   - select boundary faces.
- *   - apply the physical model.
- *   - store flux or particle effects.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
-void ProcessDSMC::recordBoundaryStressHeat(int localFace, const double velocityPre[3],
-                                           const double velocityPost[3],
-                                           double rotPre, double rotPost)
+void ProcessDSMC::recordBoundaryStressHeat(int localFace, const double velocityPre[3], const double velocityPost[3], double rotPre, double rotPost, double representedWeight)
 {
     if (!EnableBoundaryStressHeatStatistic) return;
     if (this->istep <= NSS) return;
@@ -1681,24 +1195,14 @@ void ProcessDSMC::recordBoundaryStressHeat(int localFace, const double velocityP
     const double energyTransDelta = 0.5 * (vPost2 - vPre2);
     const double energyRotDelta = rotPost - rotPre;
     BoundarySurfaceTally& tally = this->boundarySteadyTally[globalFace];
-    tally.hits += 1.0;
+    tally.hits += representedWeight;
     for (int d = 0; d < AXIS_WIDTH; ++d)
-        tally.momentumDelta[(std::size_t)d] += momentumDelta[d];
-    tally.energyTransDelta += energyTransDelta;
-    tally.energyRotDelta += energyRotDelta;
+        tally.momentumDelta[(std::size_t)d] += representedWeight * momentumDelta[d];
+    tally.energyTransDelta += representedWeight * energyTransDelta;
+    tally.energyRotDelta += representedWeight * energyRotDelta;
 }
 
-/*
- * CrossboundarySwitch: applies boundary-condition behavior.
- * Params: part, cellid, ifout, dtleft, crossfid, t, triangle_tag; returns: none.
- * Flow:
- *   - trace movement.
- *   - find the next face hit.
- *   - store local or migrating particles.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+// Applies the selected boundary model when a particle crosses a domain face.
 void ProcessDSMC::CrossboundarySwitch(particle* part, int& cellid, int& ifout, double& dtleft,int crossfid,double t,int triangle_tag)
 {
     auto& gen = partinit->thread_rng();
@@ -1821,24 +1325,16 @@ void ProcessDSMC::CrossboundarySwitch(particle* part, int& cellid, int& ifout, d
             part->p_velocity[AXIS_Y],
             part->p_velocity[AXIS_Z]
         };
-        recordBoundaryStressHeat(crossfid, velocityPre, velocityPost, rotPre, part->p_Ir);
+        // The particle keeps its origin weight until transport finishes.
+        const int weightCell = (part->p_weight_origin_gid >= 0) ? part->p_weight_origin_gid : globalOfLocalCell(cellid);
+        const double representedWeight = this->partinit->particleWeight(weightCell);
+        recordBoundaryStressHeat(crossfid, velocityPre, velocityPost, rotPre, part->p_Ir, representedWeight);
     }break;
     default:
         break;  
     }
 }
 
-/*
- * dt_ray_crosscell: works with mesh topology or geometric intersections.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::dt_ray_crosscell()
 {
     while (true)
@@ -1932,17 +1428,7 @@ void ProcessDSMC::dt_ray_crosscell()
     }
 }
 
-/*
- * advection: updates particles or particle-derived state.
- * Params: istep; returns: none.
- * Flow:
- *   - trace movement.
- *   - find the next face hit.
- *   - store local or migrating particles.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+// Advances particle trajectories and exchanges particles crossing MPI partitions.
 void ProcessDSMC::advection(int istep)
 {
     this->istep = istep;
@@ -1969,6 +1455,7 @@ void ProcessDSMC::advection(int istep)
             part.p_location[2] = bucket.pz[p];
             part.p_Ir = bucket.p_Ir[p];
             part.dt_left = bucket.dt_left[p];
+            part.p_weight_origin_gid = meshindex;
             int cellid = i;
             int crossfid = -1;
             int ifout = 0;
@@ -2016,17 +1503,6 @@ void ProcessDSMC::advection(int istep)
              << " stage=advection" << endl;
 }
 
-/*
- * cache2chain: performs one solver support operation.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::cache2chain()
 {
     if (this->partinit == nullptr)
@@ -2057,9 +1533,25 @@ void ProcessDSMC::cache2chain()
         this->cacheTouchedCells.push_back(globalCell);
     };
     const int cache_num = (int)this->recv_cache.size();
+    if ((int)this->cacheInsertStamp.size() != this->iNcell)
+    {
+        this->cacheInsertStamp.assign((std::size_t)this->iNcell, 0u);
+        this->cacheInsertIndex.assign((std::size_t)this->iNcell, -1);
+    }
+    ++this->cacheInsertEpoch;
+    if (this->cacheInsertEpoch == 0u)
+    {
+        std::fill(this->cacheInsertStamp.begin(), this->cacheInsertStamp.end(), 0u);
+        this->cacheInsertEpoch = 1u;
+    }
+    this->cacheInsertLocalCells.clear();
+    this->cacheInsertCopies.clear();
+    this->cacheInsertCopyCount.assign((std::size_t)cache_num, 0);
+
+    // Draw each stochastic conversion once, then count the capacity needed by its target cell.
     for (int j = 0; j < cache_num; ++j)
     {
-        particle parts = this->recv_cache[(std::size_t)j];
+        const particle& parts = this->recv_cache[(std::size_t)j];
         const int localCell = parts.p_mesh_serial;
         const int globalCell = this->globalOfLocalCell(localCell);
         if (globalCell < 0) continue;
@@ -2073,19 +1565,65 @@ void ProcessDSMC::cache2chain()
             continue;
         }
         markTouched(globalCell);
-        ParticleBucketSoA &bucket = this->currParticles(globalCell);
-        parts.p_serial = (int)bucket.size();
-        parts.p_rank_serial = this->c_rank;
-        parts.p_mesh_serial = localCell;
-        parts.dt_left = 0.0;
-        bucket.push_back(parts);
-        if (globalCell < (int)this->partinit->cell_particle_reserve_hint.size())
+
+        const int copies = this->cellWeightCopyCount(parts, globalCell);
+        this->cacheInsertCopyCount[(std::size_t)j] = copies;
+        if (copies <= 0)
         {
-            this->partinit->cell_particle_reserve_hint[(std::size_t)globalCell] =
-                std::max(this->partinit->cell_particle_reserve_hint[(std::size_t)globalCell],
-                         (int)bucket.size());
+            ++this->cellWeightDeletes;
+            continue;
+        }
+        if (copies > 1)
+            this->cellWeightClones += (long long)(copies - 1);
+
+        if (this->cacheInsertStamp[(std::size_t)localCell] != this->cacheInsertEpoch)
+        {
+            this->cacheInsertStamp[(std::size_t)localCell] = this->cacheInsertEpoch;
+            this->cacheInsertIndex[(std::size_t)localCell] = (int)this->cacheInsertLocalCells.size();
+            this->cacheInsertLocalCells.push_back(localCell);
+            this->cacheInsertCopies.push_back((std::size_t)copies);
+        }
+        else
+        {
+            const int index = this->cacheInsertIndex[(std::size_t)localCell];
+            this->cacheInsertCopies[(std::size_t)index] += (std::size_t)copies;
         }
     }
+
+    for (std::size_t batch = 0; batch < this->cacheInsertLocalCells.size(); ++batch)
+    {
+        const int localCell = this->cacheInsertLocalCells[batch];
+        const int globalCell = this->globalOfLocalCell(localCell);
+        if (globalCell >= 0)
+        {
+            ParticleBucketSoA& bucket = this->currParticles(globalCell);
+            bucket.reserve(bucket.size() + this->cacheInsertCopies[batch]);
+        }
+    }
+
+    for (int j = 0; j < cache_num; ++j)
+    {
+        const int copies = this->cacheInsertCopyCount[(std::size_t)j];
+        if (copies <= 0) continue;
+
+        const particle& parts = this->recv_cache[(std::size_t)j];
+        const int localCell = parts.p_mesh_serial;
+        const int globalCell = this->globalOfLocalCell(localCell);
+        if (globalCell < 0 || !this->isOwnedLocalCell(localCell)) continue;
+
+        this->currParticles(globalCell).append_copies(parts, localCell, this->c_rank, copies);
+    }
+
+    for (int localCell : this->cacheInsertLocalCells)
+    {
+        const int globalCell = this->globalOfLocalCell(localCell);
+        if (globalCell < 0 ||
+            globalCell >= (int)this->partinit->cell_particle_reserve_hint.size())
+            continue;
+        const ParticleBucketSoA& bucket = this->currParticles(globalCell);
+        this->partinit->cell_particle_reserve_hint[(std::size_t)globalCell] = std::max(this->partinit->cell_particle_reserve_hint[(std::size_t)globalCell], (int)bucket.size());
+    }
+
     for (auto it = this->partinit->cell_particles_next.begin();
          it != this->partinit->cell_particles_next.end(); )
     {
@@ -2134,17 +1672,6 @@ void ProcessDSMC::cache2chain()
 #endif
 }
 
-/*
- * migrateParticlesOnce: updates particles or particle-derived state.
- * Params: none; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool ProcessDSMC::migrateParticlesOnce()
 {
     if (this->partinit == nullptr || this->partinit->mpass == nullptr || this->mpi == nullptr)
@@ -2247,17 +1774,6 @@ bool ProcessDSMC::migrateParticlesOnce()
     return true;
 }
 
-/*
- * cache2chain_dt: performs one solver support operation.
- * Params: localNeedFull, globalNeedFull; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool ProcessDSMC::cache2chain_dt(int localNeedFull, int globalNeedFull)
 {
     if (this->partinit == nullptr || this->partinit->mpass == nullptr || this->mpi == nullptr)
@@ -2304,17 +1820,7 @@ bool ProcessDSMC::cache2chain_dt(int localNeedFull, int globalNeedFull)
         this->dtleft_send_packets[i].clear();
     return hadTraffic;
 }
-/*
- * computeBoundaryGasState: applies boundary-condition behavior.
- * Params: patch; returns: ProcessDSMC::BoundaryGasState.
- * Flow:
- *   - select boundary faces.
- *   - apply the physical model.
- *   - store flux or particle effects.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 ProcessDSMC::BoundaryGasState ProcessDSMC::computeBoundaryGasState(const BoundaryEmitPatch& patch)
 {
     BoundaryGasState gas;
@@ -2366,17 +1872,6 @@ ProcessDSMC::BoundaryGasState ProcessDSMC::computeBoundaryGasState(const Boundar
     return gas;
 }
 
-/*
- * computeBoundaryInsertCount: applies boundary-condition behavior.
- * Params: patch, gas; returns: index, count, owner, or status value.
- * Flow:
- *   - select boundary faces.
- *   - apply the physical model.
- *   - store flux or particle effects.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 int ProcessDSMC::computeBoundaryInsertCount(const BoundaryEmitPatch& patch, BoundaryGasState& gas)
 {
     double cos_theta = 0.0;
@@ -2396,23 +1891,13 @@ int ProcessDSMC::computeBoundaryInsertCount(const BoundaryEmitPatch& patch, Boun
               sqrt(gas.tPhysical / this->mess.T_ref) *
               (exp(-(scos * scos)) +
                sqrt(M_PI) * scos * (1.0 + erf(scos)));
-    add_num = add_num / this->mess.Neff + partinit->remainderinpre[(std::size_t)patch.cellLocal];
+    const int globalCell = this->globalOfLocalCell(patch.cellLocal);
+    add_num = add_num / partinit->particleWeight(globalCell) + partinit->remainderinpre[(std::size_t)patch.cellLocal];
     int N_add = floor(add_num);
     partinit->remainderinpre[(std::size_t)patch.cellLocal] = add_num - N_add;
     return N_add;
 }
 
-/*
- * sampleBoundaryParticle: updates particles or particle-derived state.
- * Params: patch, gas; returns: updated particle.
- * Flow:
- *   - select boundary faces.
- *   - apply the physical model.
- *   - store flux or particle effects.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 particle ProcessDSMC::sampleBoundaryParticle(const BoundaryEmitPatch& patch, const BoundaryGasState& gas)
 {
     auto& gen = partinit->thread_rng();
@@ -2457,17 +1942,6 @@ particle ProcessDSMC::sampleBoundaryParticle(const BoundaryEmitPatch& patch, con
     return part;
 }
 
-/*
- * traceBoundaryParticle: updates particles or particle-derived state.
- * Params: part, patch, dtleft; returns: none.
- * Flow:
- *   - trace movement.
- *   - find the next face hit.
- *   - store local or migrating particles.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::traceBoundaryParticle(particle& part, const BoundaryEmitPatch& patch, double dtleft)
 {
     int ifout = 0;
@@ -2487,17 +1961,6 @@ void ProcessDSMC::traceBoundaryParticle(particle& part, const BoundaryEmitPatch&
     }
 }
 
-/*
- * emitParticlesFromBoundaryPatch: updates particles or particle-derived state.
- * Params: patch, expectedCount; returns: index, count, owner, or status value.
- * Flow:
- *   - select boundary faces.
- *   - apply the physical model.
- *   - store flux or particle effects.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 int ProcessDSMC::emitParticlesFromBoundaryPatch(const BoundaryEmitPatch& patch, double& expectedCount)
 {
     expectedCount = 0.0;
@@ -2516,6 +1979,7 @@ int ProcessDSMC::emitParticlesFromBoundaryPatch(const BoundaryEmitPatch& patch, 
         particle part;
         part.p_serial = 0;
         part.p_rank_serial = this->c_rank;
+        part.p_weight_origin_gid = this->globalOfLocalCell(patch.cellLocal);
         part.dt_left = 0;
         double u = dis(gen);
         double v = dis(gen);
@@ -2542,17 +2006,6 @@ int ProcessDSMC::emitParticlesFromBoundaryPatch(const BoundaryEmitPatch& patch, 
     return N_add;
 }
 
-/*
- * preprocesseffquad: performs one solver support operation.
- * Params: istep; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::preprocesseffquad(int istep)
 {
     this->istep = istep;
@@ -2569,17 +2022,6 @@ void ProcessDSMC::preprocesseffquad(int istep)
              << " stage=preprocess" << endl;
 }
 
-/*
- * collision_diameter: updates particles or particle-derived state.
- * Params: cr; returns: computed scalar.
- * Flow:
- *   - select collision pairs.
- *   - apply acceptance model.
- *   - update particle velocities.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 double ProcessDSMC::collision_diameter(double cr)
 {   
     const double con_denominator = tgamma(5.0/2.0 - this->mess.omega);
@@ -2590,34 +2032,13 @@ double ProcessDSMC::collision_diameter(double cr)
     return collision_diameter(cr, collisionDiameterPrefactor);
 }
 
-/*
- * collision_diameter: updates particles or particle-derived state.
- * Params: cr, collisionDiameterPrefactor; returns: computed scalar.
- * Flow:
- *   - select collision pairs.
- *   - apply acceptance model.
- *   - update particle velocities.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 double ProcessDSMC::collision_diameter(double cr, double collisionDiameterPrefactor)
 {
     const double cr2 = cr * cr;
     return cr * collisionDiameterPrefactor * pow(1.0 / cr2, this->mess.eta);
 }
 
-/*
- * collisionDSMC: updates particles or particle-derived state.
- * Params: none; returns: none.
- * Flow:
- *   - select collision pairs.
- *   - apply acceptance model.
- *   - update particle velocities.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+// Samples cellwise collision pairs and updates translational and rotational energies.
 void ProcessDSMC::collisionDSMC()
 {
     tol_collision_pairs = 0;
@@ -2644,7 +2065,8 @@ void ProcessDSMC::collisionDSMC()
         const double S = this->cells[i].area;
         double crm = partinit->crmax[i];
         const double consant_crm = collision_diameter(crm * vrms, collisionDiameterPrefactor);
-        const double pairs = 0.5 * Np_cell * (Np_cell - 1) * this->mess.Neff * consant_crm * this->mess.dtime * this->mess.dt_ref / S + partinit->remainderincoll[i];
+        const double cellNeff = this->partinit->particleWeight(meshindex);
+        const double pairs = 0.5 * Np_cell * (Np_cell - 1) * cellNeff * consant_crm * this->mess.dtime * this->mess.dt_ref / S + partinit->remainderincoll[i];
         const int npairs = (int)floor(pairs);
         partinit->remainderincoll[i] = pairs - npairs;
         tol_collision_pairs += npairs;
@@ -2665,17 +2087,6 @@ void ProcessDSMC::collisionDSMC()
     }
 }
 
-/*
- * collisionVelocity: updates particles or particle-derived state.
- * Params: bucket, idx1, idx2, tol_collision_times, consant_crm, crm, collisionDiameterPrefactor; returns: none.
- * Flow:
- *   - select collision pairs.
- *   - apply acceptance model.
- *   - update particle velocities.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::collisionVelocity(ParticleBucketSoA& bucket, int idx1, int idx2, int& tol_collision_times,
                                     double consant_crm, double& crm, double collisionDiameterPrefactor)
 {
@@ -2743,17 +2154,7 @@ void ProcessDSMC::collisionVelocity(ParticleBucketSoA& bucket, int idx1, int idx
     tol_collision_times++;
 }
 
-/*
- * statistic_macro: couples DSMC data with macroscopic fields.
- * Params: istep; returns: none.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+// Accumulates particle moments for macroscopic fields and sampling windows.
 void ProcessDSMC::statistic_macro(int istep)
 {
     current_macro_zero();
@@ -2860,17 +2261,6 @@ void ProcessDSMC::statistic_macro(int istep)
     } 
 }
 
-/*
- * stepinter_macro_zero: couples DSMC data with macroscopic fields.
- * Params: icell; returns: none.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::stepinter_macro_zero(int icell)
 {
     this->stepinter_rho[icell] = 0.0;
@@ -2897,17 +2287,6 @@ void ProcessDSMC::stepinter_macro_zero(int icell)
     }
 }
 
-/*
- * current_macro_zero: couples DSMC data with macroscopic fields.
- * Params: none; returns: none.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::current_macro_zero()
 {
     for (int i = 0;i<this->iNcell;i++)
@@ -2937,17 +2316,6 @@ void ProcessDSMC::current_macro_zero()
     }
 }
 
-/*
- * accumulateCellMoments: works with mesh topology or geometric intersections.
- * Params: localCell, bucket, moments; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::accumulateCellMoments(int localCell, const ParticleBucketSoA& bucket,
                                         MacroMoments& moments)
 {
@@ -3005,17 +2373,6 @@ void ProcessDSMC::accumulateCellMoments(int localCell, const ParticleBucketSoA& 
     this->step_qr[rotHeatOffset(localCell, ROT_HEAT_Z)] = moments.rot[ROT_HEAT_Z];
 }
 
-/*
- * loadMacroMoments: updates partition ownership or load data.
- * Params: localCell, rho, velocity, kinetic, stress, heat, rot; returns: ProcessDSMC::MacroMoments.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 ProcessDSMC::MacroMoments ProcessDSMC::loadMacroMoments(
     int localCell, const vector<double>& rho, const vector<double>& velocity,
     const vector<double>& kinetic, const vector<double>& stress,
@@ -3047,17 +2404,6 @@ ProcessDSMC::MacroMoments ProcessDSMC::loadMacroMoments(
     return moments;
 }
 
-/*
- * accumulateStepMomentsInto: performs one solver support operation.
- * Params: localCell, rho, velocity, kinetic, stress, heat, rot, historyWeight; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::accumulateStepMomentsInto(
     int localCell, vector<double>& rho, vector<double>& velocity,
     vector<double>& kinetic, vector<double>& stress, vector<double>& heat,
@@ -3092,17 +2438,6 @@ void ProcessDSMC::accumulateStepMomentsInto(
     }
 }
 
-/*
- * updateStepWindowMoments: writes solver fields or diagnostics.
- * Params: localCell, istep; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::updateStepWindowMoments(int localCell, int istep)
 {
     const double na = static_cast<double>(NSCHEME);
@@ -3112,23 +2447,12 @@ void ProcessDSMC::updateStepWindowMoments(int localCell, int istep)
         stepsum_sigma, stepsum_q, stepsum_qr, historyWeight);
 }
 
-/*
- * writeAveragedMacro: writes solver fields or diagnostics.
- * Params: localCell, moments, sampleCount, target; returns: none.
- * Flow:
- *   - select fields.
- *   - format by mesh order.
- *   - flush output.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::writeAveragedMacro(
     int localCell, const MacroMoments& moments, double sampleCount,
     vector<double>& target)
 {
     const double Np = moments.rho;
-    const double Neff = this->mess.Neff;
+    const double Neff = this->partinit->particleWeight(this->globalOfLocalCell(localCell));
     const double S = this->cells[localCell].area;
     double* out = &target[macroOffset(localCell, MACRO_RHO)];
     if (!(Np > kMacroMinDivisor) || !std::isfinite(Np) ||
@@ -3136,17 +2460,7 @@ void ProcessDSMC::writeAveragedMacro(
         !(S > 0.0) || !std::isfinite(S) ||
         !(Neff > 0.0) || !std::isfinite(Neff) ||
         !(this->mess.n_ref > 0.0) || !std::isfinite(this->mess.n_ref) ||
-/*
- * !: performs one solver support operation.
- * Params: 0.0; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
         !(this->mess.dr > 0.0) || !std::isfinite(this->mess.dr))
     {
         for (int j = 0; j < MACRO_WIDTH; ++j)
@@ -3180,17 +2494,6 @@ void ProcessDSMC::writeAveragedMacro(
     guardInvalidMacro(target, localCell);
 }
 
-/*
- * guardInvalidMacro: couples DSMC data with macroscopic fields.
- * Params: target, localCell; returns: none.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::guardInvalidMacro(vector<double>& target, int localCell)
 {
     double* out = &target[macroOffset(localCell, MACRO_RHO)];
@@ -3210,17 +2513,6 @@ void ProcessDSMC::guardInvalidMacro(vector<double>& target, int localCell)
     }
 }
 
-/*
- * writeLocalMacro: writes solver fields or diagnostics.
- * Params: localCell, moments; returns: none.
- * Flow:
- *   - select fields.
- *   - format by mesh order.
- *   - flush output.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::writeLocalMacro(int localCell, const MacroMoments& moments)
 {
     double Nl = moments.rho;
@@ -3233,7 +2525,8 @@ void ProcessDSMC::writeLocalMacro(int localCell, const MacroMoments& moments)
         }
         return;
     }
-    out[MACRO_RHO] = this->mess.Neff/this->cells[localCell].area*Nl/this->mess.n_ref;
+    const double Neff = this->partinit->particleWeight(this->globalOfLocalCell(localCell));
+    out[MACRO_RHO] = Neff/this->cells[localCell].area*Nl/this->mess.n_ref;
     out[MACRO_UX] = moments.velocity[AXIS_X]/Nl;
     out[MACRO_UY] = moments.velocity[AXIS_Y]/Nl;
     out[MACRO_UZ] = moments.velocity[AXIS_Z]/Nl;
@@ -3257,21 +2550,10 @@ void ProcessDSMC::writeLocalMacro(int localCell, const MacroMoments& moments)
     out[MACRO_QRZ] = 2.0*out[MACRO_RHO]/Nl*(moments.rot[ROT_HEAT_Z]-out[MACRO_UZ]*moments.rot[ROT_ENERGY]);
 }
 
-/*
- * writeRecordMacro: writes solver fields or diagnostics.
- * Params: localCell, moments; returns: none.
- * Flow:
- *   - select fields.
- *   - format by mesh order.
- *   - flush output.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 void ProcessDSMC::writeRecordMacro(int localCell, const MacroMoments& moments)
 {
     double Np = moments.rho;
-    double Neff = this->mess.Neff;
+    const double Neff = this->partinit->particleWeight(this->globalOfLocalCell(localCell));
     double S = this->cells[localCell].area;
     double* out = &this->record[macroOffset(localCell, MACRO_RHO)];
     out[MACRO_RHO] = Neff/S*Np/this->mess.n_ref;
@@ -3298,17 +2580,7 @@ void ProcessDSMC::writeRecordMacro(int localCell, const MacroMoments& moments)
     out[MACRO_QRZ] = 2.0*out[MACRO_RHO]/Np*(moments.rot[ROT_HEAT_Z]-out[MACRO_UZ]*moments.rot[ROT_ENERGY]);
 }
 
-/*
- * statistic_macroPre: couples DSMC data with macroscopic fields.
- * Params: none; returns: none.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+// Initializes macroscopic statistics from the initial particle distribution.
 void ProcessDSMC::statistic_macroPre()
 {
     if (!this->mpi->active()) return;
@@ -3324,17 +2596,7 @@ void ProcessDSMC::statistic_macroPre()
         writeRecordMacro(i, moments);
     }
 }
-/*
- * out2dat: writes solver fields or diagnostics.
- * Params: istep; returns: success or decision flag.
- * Flow:
- *   - select fields.
- *   - format by mesh order.
- *   - flush output.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
 bool ProcessDSMC::out2dat(int istep)
 {
     int ncell = this->mess.Ncell, Madata = this->Madata;
@@ -3418,7 +2680,7 @@ bool ProcessDSMC::out2dat(int istep)
             }
         }
         char filename[100];
-        sprintf(filename, "./statisticResults/DSMCKn%.1f_iter%d_CELL%d.dat", this->mess.Kn, istep, ncell);
+        sprintf(filename, "./statisticResults/DSMCKn%.3f_iter%d_CELL%d.dat", this->mess.Kn, istep, ncell);
         if (this->mesh == NULL)
             return false;
         return this->mesh->out2Fluent_dsmc(filename, w);
@@ -3437,17 +2699,6 @@ bool ProcessDSMC::out2dat(int istep)
     return true;
 }
 
-/*
- * outBoundaryStressHeat: writes solver fields or diagnostics.
- * Params: istep; returns: success or decision flag.
- * Flow:
- *   - select fields.
- *   - format by mesh order.
- *   - flush output.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
 bool ProcessDSMC::outBoundaryStressHeat(int istep)
 {
     if (!EnableBoundaryStressHeatStatistic) return true;
@@ -3494,7 +2745,7 @@ bool ProcessDSMC::outBoundaryStressHeat(int istep)
     const bool useSteady = (istep > NSS);
     const double sampleSteps = useSteady ? static_cast<double>(istep - NSS) : 1.0;
     const double timeScale = (this->mess.dtime > 0.0 && sampleSteps > 0.0)
-        ? this->mess.Neff / (this->mess.dtime * sampleSteps)
+        ? 1.0 / (this->mess.dtime * sampleSteps)
         : 0.0;
     struct WallFaceOutput
     {
@@ -3609,30 +2860,10 @@ bool ProcessDSMC::outBoundaryStressHeat(int istep)
         };
         auto writeVectorBlock = [&](int variableId, double (WallFaceOutput::*field)[3])
         {
-/*
- * ": performs one solver support operation.
- * Params: face; returns: fout <<.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
             fout << "(300 (" << variableId << " " << zone.zoneId << " " << 3
                  << " 0 0 " << zone.firstFace << " " << zone.lastFace << ")" << endl;
-/*
- * ": performs one solver support operation.
- * Params: face; returns: fout <<.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- */
+
             fout << "(" << endl;
             for (int face = zone.firstFace - 1; face < zone.lastFace; ++face)
             {
@@ -3651,4 +2882,99 @@ bool ProcessDSMC::outBoundaryStressHeat(int istep)
         writeScalarBlock(706, &WallFaceOutput::qTotal);
     }
     return true;
+}
+
+bool ProcessDSMC::outParticleCount(int istep)
+{
+    const int ncell = this->mess.Ncell;
+    const bool isRoot = this->mpi->root();
+
+    std::vector<long long> localCounts(ncell, 0);
+    std::vector<long long> globalCounts;
+
+    if (this->mpi->active())
+    {
+        for (int i = 0; i < this->iNcell; ++i)
+        {
+            const int gid = this->globalOfLocalCell(i);
+            if (gid < 0 || gid >= ncell) continue;
+
+            localCounts[gid] = static_cast<long long>(currParticles(gid).size());
+        }
+    }
+
+    if (isRoot)
+    {
+        globalCounts.resize(ncell, 0);
+    }
+
+    if (MPI_Reduce(localCounts.data(), isRoot ? globalCounts.data() : nullptr,
+                   ncell, MPI_LONG_LONG_INT, MPI_SUM, 0, comm) != MPI_SUCCESS)
+    {
+        return false;
+    }
+
+    int writeSuccess = 1;
+
+    if (isRoot)
+    {
+        const int cellId = 2;
+        int cellFirstIndex = 0;
+        int cellLastIndex = 0;
+
+        if (this->mesh != nullptr)
+        {
+            for (const auto& zone : this->mesh->zonemap)
+            {
+                if (zone.id == cellId)
+                {
+                    cellFirstIndex = zone.firstidx;
+                    cellLastIndex = zone.lastidx;
+                    break;
+                }
+            }
+        }
+
+        if (cellFirstIndex < 1 || cellLastIndex < cellFirstIndex || cellLastIndex > ncell)
+        {
+            writeSuccess = 0;
+        }
+        else
+        {
+            char filename[256];
+            std::snprintf(filename, sizeof(filename),
+                          "./statisticResults/ParticleCount_iter%d_CELL%d.dat",
+                          istep, ncell);
+
+            std::ofstream fout(filename);
+
+            if (!fout)
+            {
+                writeSuccess = 0;
+            }
+            else
+            {
+                fout << "(0 \"Current-step simulation particle count\")\n";
+                fout << "(300 (701 " << cellId << " 1 0 0 "
+                     << cellFirstIndex << " " << cellLastIndex << ")\n";
+                fout << "(\n";
+
+                for (int iCell = cellFirstIndex - 1; iCell < cellLastIndex; ++iCell)
+                {
+                    fout << globalCounts[iCell] << '\n';
+                }
+
+                fout << "))\n";
+                fout.close();
+                writeSuccess = fout ? 1 : 0;
+            }
+        }
+    }
+
+    if (MPI_Bcast(&writeSuccess, 1, MPI_INT, 0, comm) != MPI_SUCCESS)
+    {
+        return false;
+    }
+
+    return writeSuccess != 0;
 }

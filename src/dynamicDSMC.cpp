@@ -1,6 +1,4 @@
-/*
- * Load calculation, repartition planning, particle migration, and DSMC rebuild.
- */
+// Balances DSMC work by repartitioning cells and migrating particles and cell fields.
 
 #include "dynamicDSMC.h"
 
@@ -21,18 +19,7 @@ namespace
     const int kFieldWidth = 77;
     constexpr int kMigrationHaloRings = 3;
     constexpr double kDynamicRepartitionImbalanceThreshold = 1.10;
-/*
- * legacyCellLoadWeight: updates partition ownership or load data.
- * Params: process, globalCell; returns: index, count, owner, or status value.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     int legacyCellLoadWeight(const ProcessDSMC* process, int globalCell)
     {
         if (process == nullptr || globalCell < 0)
@@ -52,18 +39,7 @@ namespace
         std::vector<double>* values;
         int stride;
     };
-/*
- * packetWidth: moves structured data through MPI.
- * Params: fields; returns: index, count, owner, or status value.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     int packetWidth(const std::vector<ConstFieldDesc>& fields)
     {
         int width = 0;
@@ -71,18 +47,7 @@ namespace
             width += std::max(0, f.stride);
         return width;
     }
-/*
- * packetWidth: moves structured data through MPI.
- * Params: fields; returns: index, count, owner, or status value.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     int packetWidth(const std::vector<FieldDesc>& fields)
     {
         int width = 0;
@@ -90,150 +55,51 @@ namespace
             width += std::max(0, f.stride);
         return width;
     }
-/*
- * readScalar: parses mesh or configuration input.
- * Params: v, i; returns: computed scalar.
- * Flow:
- *   - decode the input record.
- *   - fill mesh arrays.
- *   - report parse status.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     inline double readScalar(const std::vector<double> &v, int i)
     {
         return (i >= 0 && i < (int)v.size()) ? v[(std::size_t)i] : 0.0;
     }
-/*
- * readStride: parses mesh or configuration input.
- * Params: v, i, stride, k; returns: computed scalar.
- * Flow:
- *   - decode the input record.
- *   - fill mesh arrays.
- *   - report parse status.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     inline double readStride(const std::vector<double> &v, int i, int stride, int k)
     {
         const std::size_t pos = (std::size_t)i * (std::size_t)stride + (std::size_t)k;
         return (pos < v.size()) ? v[pos] : 0.0;
     }
-/*
- * writeScalar: writes solver fields or diagnostics.
- * Params: v, i, value; returns: none.
- * Flow:
- *   - select fields.
- *   - format by mesh order.
- *   - flush output.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     inline void writeScalar(std::vector<double> &v, int i, double value)
     {
         if (i >= 0 && i < (int)v.size()) v[(std::size_t)i] = value;
     }
-/*
- * writeStride: writes solver fields or diagnostics.
- * Params: v, i, stride, k, value; returns: none.
- * Flow:
- *   - select fields.
- *   - format by mesh order.
- *   - flush output.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     inline void writeStride(std::vector<double> &v, int i, int stride, int k, double value)
     {
         const std::size_t pos = (std::size_t)i * (std::size_t)stride + (std::size_t)k;
         if (pos < v.size()) v[pos] = value;
     }
-/*
- * packScalar: moves structured data through MPI.
- * Params: src, i, dst, base, pos; returns: none.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     inline void packScalar(const std::vector<double> &src, int i, std::vector<double> &dst, std::size_t base, int &pos)
     {
         dst[base + (std::size_t)pos++] = readScalar(src, i);
     }
-/*
- * packStride: moves structured data through MPI.
- * Params: src, i, stride, dst, base, pos; returns: none.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     inline void packStride(const std::vector<double> &src, int i, int stride, std::vector<double> &dst, std::size_t base, int &pos)
     {
         for (int k = 0; k < stride; ++k)
             dst[base + (std::size_t)pos++] = readStride(src, i, stride, k);
     }
-/*
- * unpackScalar: moves structured data through MPI.
- * Params: dst, i, src, base, pos; returns: none.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     inline void unpackScalar(std::vector<double> &dst, int i, const std::vector<double> &src, std::size_t base, int &pos)
     {
         writeScalar(dst, i, src[base + (std::size_t)pos++]);
     }
-/*
- * unpackStride: moves structured data through MPI.
- * Params: dst, i, stride, src, base, pos; returns: none.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     inline void unpackStride(std::vector<double> &dst, int i, int stride, const std::vector<double> &src, std::size_t base, int &pos)
     {
         for (int k = 0; k < stride; ++k)
             writeStride(dst, i, stride, k, src[base + (std::size_t)pos++]);
     }
-/*
- * packFields: moves structured data through MPI.
- * Params: fields, srcCell, dst, base, pos; returns: none.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     void packFields(const std::vector<ConstFieldDesc>& fields,
                     int srcCell,
                     std::vector<double>& dst,
@@ -249,18 +115,7 @@ namespace
                 packStride(*f.values, srcCell, f.stride, dst, base, pos);
         }
     }
-/*
- * unpackFields: moves structured data through MPI.
- * Params: fields, dstCell, src, base, pos; returns: none.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     void unpackFields(const std::vector<FieldDesc>& fields,
                       int dstCell,
                       const std::vector<double>& src,
@@ -276,18 +131,7 @@ namespace
                 unpackStride(*f.values, dstCell, f.stride, src, base, pos);
         }
     }
-/*
- * copyFieldValues: performs one solver support operation.
- * Params: srcFields, srcCell, dstFields, dstCell; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     void copyFieldValues(const std::vector<ConstFieldDesc>& srcFields,
                          int srcCell,
                          const std::vector<FieldDesc>& dstFields,
@@ -315,18 +159,6 @@ namespace
     }
 }
 
-/*
- * dynamicDSMC: initializes dynamicDSMC state.
- * Params: mesh, mpass, mess, partinit, DSMCprocess, mpiCtx; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 dynamicDSMC::dynamicDSMC(meshImport *mesh,
                          MessagePassing *mpass,
                          meshMessage mess,
@@ -348,34 +180,10 @@ dynamicDSMC::dynamicDSMC(meshImport *mesh,
     this->c_size = mpiCtx.c_size;
 }
 
-/*
- * ~dynamicDSMC: releases owned buffers and MPI helper state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 dynamicDSMC::~dynamicDSMC()
 {
 }
 
-/*
- * dynamic_rankload_distribute: updates partition ownership or load data.
- * Params: nParts; returns: none.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
 {
     const auto nowSeconds = [this]() -> double
@@ -581,18 +389,6 @@ void dynamicDSMC::dynamic_rankload_distribute(idx_t nParts)
     reportStageTimes("ok", partitionChanged);
 }
 
-/*
- * planRepartitionByLoad: updates partition ownership or load data.
- * Params: nParts, cellLoadGlobal; returns: success or decision flag.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
                                         const std::vector<int>& cellLoadGlobal)
 {
@@ -807,18 +603,6 @@ bool dynamicDSMC::planRepartitionByLoad(idx_t nParts,
     return true;
 }
 
-/*
- * syncDsmcCellOwners: updates partition ownership or load data.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void dynamicDSMC::syncDsmcCellOwners()
 {
     if (this->mesh == nullptr || this->DSMCprocess == nullptr) return;
@@ -828,18 +612,6 @@ void dynamicDSMC::syncDsmcCellOwners()
         this->mesh->Dsmccells[(std::size_t)i].no = this->DSMCprocess->rank_cell_all[(std::size_t)i];
 }
 
-/*
- * buildLineGraph: performs one solver support operation.
- * Params: xadj, adjncy, edgeCell, edgeSlot; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void dynamicDSMC::buildLineGraph(std::vector<idx_t>& xadj,
                                  std::vector<idx_t>& adjncy,
                                  std::vector<int>* edgeCell,
@@ -895,36 +667,12 @@ void dynamicDSMC::buildLineGraph(std::vector<idx_t>& xadj,
     lineGraphCacheReady = true;
 }
 
-/*
- * matchPartitions: updates partition ownership or load data.
- * Params: graph; returns: computed container.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 std::vector<std::vector<int>> dynamicDSMC::matchPartitions(
     const std::vector<std::vector<int>>& graph) const
 {
     return const_cast<dynamicDSMC*>(this)->KM_match(graph);
 }
 
-/*
- * findpath: performs one solver support operation.
- * Params: x, nx, ny; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 int dynamicDSMC::findpath(int x, int nx, int ny)
 {
     visx[(std::size_t)x] = true;
@@ -948,18 +696,6 @@ int dynamicDSMC::findpath(int x, int nx, int ny)
     return -1;
 }
 
-/*
- * KM_match: updates partition ownership or load data.
- * Params: graph; returns: computed container.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 std::vector<std::vector<int>> dynamicDSMC::KM_match(const std::vector<std::vector<int>>& graph)
 {
     const int n = (int)graph.size();
@@ -1057,18 +793,6 @@ std::vector<std::vector<int>> dynamicDSMC::KM_match(const std::vector<std::vecto
     return result;
 }
 
-/*
- * migrateParticlesByOwner: updates partition ownership or load data.
- * Params: none; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool dynamicDSMC::migrateParticlesByOwner()
 {
     this->repartitionParticles.clear();
@@ -1140,18 +864,6 @@ bool dynamicDSMC::migrateParticlesByOwner()
     return true;
 }
 
-/*
- * migrateCellFieldsPacket: moves structured data through MPI.
- * Params: none; returns: success or decision flag.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool dynamicDSMC::migrateCellFieldsPacket()
 {
     if (this->mpi == nullptr || !this->mpi->active()) return true;
@@ -1379,18 +1091,6 @@ bool dynamicDSMC::migrateCellFieldsPacket()
     return true;
 }
 
-/*
- * rebuildParticleChainsAfterRepartition: updates partition ownership or load data.
- * Params: particles; returns: success or decision flag.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool dynamicDSMC::rebuildParticleChainsAfterRepartition(const std::vector<particle>& particles)
 {
     if (this->mpi == nullptr || !this->mpi->active()) return true;
@@ -1465,18 +1165,6 @@ bool dynamicDSMC::rebuildParticleChainsAfterRepartition(const std::vector<partic
     return true;
 }
 
-/*
- * compute_cell_load_local: updates partition ownership or load data.
- * Params: cell_load; returns: none.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
 {
     if (this->mpi == nullptr || this->DSMCprocess == nullptr || this->mess.Ncell <= 0) return;
@@ -1677,18 +1365,6 @@ void dynamicDSMC::compute_cell_load_local(vector<int>& cell_load)
     this->DSMCprocess->reset_partition_time_weights();
 }
 
-/*
- * rebuildDsmcAfterRepartition: updates partition ownership or load data.
- * Params: none; returns: none.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void dynamicDSMC::rebuildDsmcAfterRepartition()
 {
     if (!this->mpi->active()) return;
@@ -1699,18 +1375,7 @@ void dynamicDSMC::rebuildDsmcAfterRepartition()
     this->DSMCprocess->dsmc2ns_window_samples.assign((std::size_t)this->DSMCprocess->iNcell, 0.0);
     this->DSMCprocess->dsmc2ns_window_valid.assign((std::size_t)this->DSMCprocess->iNcell, 0);
 }
-/*
- * average_load_calculate: updates partition ownership or load data.
- * Params: none; returns: none.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 void dynamicDSMC::average_load_calculate()
 {
     if (!this->mpi->active()) return;

@@ -1,6 +1,4 @@
-/*
- * DSMC/NS exchange, filtering, reconstruction, and particle adjustment.
- */
+// Couples DSMC moments to the macroscopic solve and applies accepted particle corrections.
 
 # include "ProcessGSIS.h"
 #include <algorithm>
@@ -12,18 +10,7 @@ using namespace std;
 
 namespace
 {
-/*
- * parseEnvBool: performs one solver support operation.
- * Params: value, defaultValue; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static bool parseEnvBool(const char* value, bool defaultValue)
 {
     if (value == nullptr || value[0] == '\0') return defaultValue;
@@ -45,18 +32,7 @@ static bool parseEnvBool(const char* value, bool defaultValue)
             return defaultValue;
     }
 }
-/*
- * parseEnvDouble: performs one solver support operation.
- * Params: value, defaultValue; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static double parseEnvDouble(const char* value, double defaultValue)
 {
     if (value == nullptr || value[0] == '\0') return defaultValue;
@@ -65,18 +41,7 @@ static double parseEnvDouble(const char* value, double defaultValue)
     if (end == value || !std::isfinite(parsed)) return defaultValue;
     return parsed;
 }
-/*
- * parseEnvInt: performs one solver support operation.
- * Params: value, defaultValue; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static int parseEnvInt(const char* value, int defaultValue)
 {
     if (value == nullptr || value[0] == '\0') return defaultValue;
@@ -85,34 +50,12 @@ static int parseEnvInt(const char* value, int defaultValue)
     if (end == value) return defaultValue;
     return (int)parsed;
 }
-/*
- * clampLower: performs one solver support operation.
- * Params: value, lowerBound; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static double clampLower(double value, double lowerBound)
 {
     return (value < lowerBound) ? lowerBound : value;
 }
-/*
- * loadDsmc2NsCouplingConfig: updates partition ownership or load data.
- * Params: config; returns: ProcessGSIS::Dsmc2NsCouplingConfig.
- * Flow:
- *   - gather load/owner data.
- *   - build the new mapping.
- *   - refresh dependent local state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static ProcessGSIS::Dsmc2NsCouplingConfig loadDsmc2NsCouplingConfig(
     ProcessGSIS::Dsmc2NsCouplingConfig config)
 {
@@ -190,6 +133,9 @@ static ProcessGSIS::Dsmc2NsCouplingConfig loadDsmc2NsCouplingConfig(
     config.logFilterSummary =
         parseEnvBool(std::getenv("DSMC2NS_FILTER_LOG"),
                      config.logFilterSummary);
+    config.logFilterDetails =
+        parseEnvBool(std::getenv("DSMC2NS_FILTER_LOG_DETAILS"),
+                     config.logFilterDetails);
     if (config.rhoMax < config.rhoMin) std::swap(config.rhoMax, config.rhoMin);
     if (config.tMax < config.tMin) std::swap(config.tMax, config.tMin);
     if (config.trMax < config.trMin) std::swap(config.trMax, config.trMin);
@@ -202,36 +148,14 @@ static ProcessGSIS::Dsmc2NsCouplingConfig loadDsmc2NsCouplingConfig(
         std::swap(config.rotHeatRatioMax, config.rotHeatRatioMin);
     return config;
 }
-/*
- * positiveUniform: performs one solver support operation.
- * Params: dis, gen; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static double positiveUniform(std::uniform_real_distribution<double>& dis,
                               std::mt19937& gen)
 {
     const double r = dis(gen);
     return (r > 0.0) ? r : 1.0e-300;
 }
-/*
- * finiteAtIndices: performs one solver support operation.
- * Params: values, indices, count; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static bool finiteAtIndices(const double* values, const int* indices, int count)
 {
     for (int i = 0; i < count; ++i)
@@ -241,18 +165,7 @@ static bool finiteAtIndices(const double* values, const int* indices, int count)
     }
     return true;
 }
-/*
- * dsmc2nsConfiguredSampleAccepted: updates particles or particle-derived state.
- * Params: sampleCount, filterEnabled, minSampleCount; returns: success or decision flag.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static bool dsmc2nsConfiguredSampleAccepted(double sampleCount,
                                             bool filterEnabled,
                                             double minSampleCount)
@@ -260,36 +173,14 @@ static bool dsmc2nsConfiguredSampleAccepted(double sampleCount,
     if (!std::isfinite(sampleCount)) return false;
     return !filterEnabled || sampleCount > minSampleCount;
 }
-/*
- * macroLowOrderFinite: couples DSMC data with macroscopic fields.
- * Params: values; returns: success or decision flag.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static bool macroLowOrderFinite(const double* values)
 {
     const int lowOrderIndices[] = {0, 1, 2, 3, 4, 14};
     return finiteAtIndices(values, lowOrderIndices,
                            (int)(sizeof(lowOrderIndices) / sizeof(lowOrderIndices[0])));
 }
-/*
- * macroHighOrderFinite: couples DSMC data with macroscopic fields.
- * Params: values; returns: success or decision flag.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static bool macroHighOrderFinite(const double* values)
 {
     const int highOrderIndices[] = {5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17};
@@ -311,18 +202,7 @@ struct Dsmc2NsMetrics
     double rotHeatRatio = 1.0e300;
     double knCell = 1.0e300;
 };
-/*
- * buildDsmc2NsMetrics: works with mesh topology or geometric intersections.
- * Params: in, sampleCount, ns, cellVolume; returns: Dsmc2NsMetrics.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static Dsmc2NsMetrics buildDsmc2NsMetrics(const double* in,
                                           double sampleCount,
                                           const MacroSolver* ns,
@@ -341,36 +221,14 @@ static Dsmc2NsMetrics buildDsmc2NsMetrics(const double* in,
                       metrics.uy * metrics.uy +
                       metrics.uz * metrics.uz;
     if (metrics.T > 0.0 && std::isfinite(metrics.T) &&
-/*
- * isfinite: performs one solver support operation.
- * Params: u2; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
         std::isfinite(u2) && ns != nullptr)
     {
         metrics.Ma = std::sqrt(u2) / std::sqrt(ns->mess.gamma * metrics.T);
     }
     if (metrics.rho > 0.0 && metrics.T > 0.0 && cellVolume > 0.0 &&
         std::isfinite(metrics.rho) && std::isfinite(metrics.T) &&
-/*
- * isfinite: performs one solver support operation.
- * Params: cellVolume; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
         std::isfinite(cellVolume) && ns != nullptr)
     {
         const double pi = std::acos(-1.0);
@@ -424,18 +282,7 @@ struct Dsmc2NsDecision
     bool macroReliable = false;
     bool highOrderReliable = false;
 };
-/*
- * decideDsmc2NsCoupling: couples DSMC data with macroscopic fields.
- * Params: config, in, metrics; returns: Dsmc2NsDecision.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static Dsmc2NsDecision decideDsmc2NsCoupling(
     const ProcessGSIS::Dsmc2NsCouplingConfig& config,
     const double* in,
@@ -498,18 +345,7 @@ static Dsmc2NsDecision decideDsmc2NsCoupling(
         !decision.highOrderUpperBoundsReject;
     return decision;
 }
-/*
- * randomBarycentric4: works with mesh topology or geometric intersections.
- * Params: dis, gen, a, b, c, d; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static void randomBarycentric4(std::uniform_real_distribution<double>& dis,
                                std::mt19937& gen,
                                double& a,
@@ -534,18 +370,7 @@ static void randomBarycentric4(std::uniform_real_distribution<double>& dis,
 }
 struct GsisPacketExchange
 {
-/*
- * prefixCounts: performs one solver support operation.
- * Params: counts, displs, total; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     static void prefixCounts(const vector<int> &counts, vector<int> &displs, int &total)
     {
         displs.assign(counts.size(), 0);
@@ -556,18 +381,7 @@ struct GsisPacketExchange
             total += counts[i];
         }
     }
-/*
- * exchange: moves structured data through MPI.
- * Params: comm, rankCount, valueWidth, sendCounts, sendGids, sendValues, recvGids, recvValues; returns: success or decision flag.
- * Flow:
- *   - prepare counts or datatypes.
- *   - perform MPI transfer.
- *   - store received data.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
     static bool exchange(MPI_Comm comm,
                          int rankCount,
                          int valueWidth,
@@ -640,34 +454,12 @@ struct InitTetLocal
     int node[4] = {-1, -1, -1, -1};
     double volume = 0.0;
 };
-/*
- * validLocalNodeIndex: works with mesh topology or geometric intersections.
- * Params: idx, xyz; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static bool validLocalNodeIndex(int idx, const vector<double>& xyz)
 {
     return idx >= 0 && (size_t)idx < xyz.size() / 3u;
 }
-/*
- * tetAbsVolume: works with mesh topology or geometric intersections.
- * Params: xyz, n0, n1, n2, n3; returns: computed scalar.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static double tetAbsVolume(const vector<double>& xyz,
                            int n0, int n1, int n2, int n3)
 {
@@ -685,18 +477,7 @@ static double tetAbsVolume(const vector<double>& xyz,
     const double crz = bx * cy - by * cx;
     return fabs(ax * crx + ay * cry + az * crz) / 6.0;
 }
-/*
- * appendVertexTet: works with mesh topology or geometric intersections.
- * Params: process, n0, n1, n2, n3, tets; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static bool appendVertexTet(const ProcessDSMC& process,
                             int n0, int n1, int n2, int n3,
                             vector<InitTetLocal>& tets)
@@ -711,18 +492,7 @@ static bool appendVertexTet(const ProcessDSMC& process,
     tets.push_back(tet);
     return true;
 }
-/*
- * collectCellUniqueNodes: works with mesh topology or geometric intersections.
- * Params: process, cell, uniqueNodes; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static bool collectCellUniqueNodes(const ProcessDSMC& process,
                                    const DsmcCell& cell,
                                    vector<int>& uniqueNodes)
@@ -744,18 +514,7 @@ static bool collectCellUniqueNodes(const ProcessDSMC& process,
     }
     return true;
 }
-/*
- * appendTetCellTets: works with mesh topology or geometric intersections.
- * Params: process, cell, tets; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static bool appendTetCellTets(const ProcessDSMC& process,
                               const DsmcCell& cell,
                               vector<InitTetLocal>& tets)
@@ -766,18 +525,7 @@ static bool appendTetCellTets(const ProcessDSMC& process,
     return appendVertexTet(process, uniqueNodes[0], uniqueNodes[1],
                            uniqueNodes[2], uniqueNodes[3], tets);
 }
-/*
- * appendPyramidCellTets: works with mesh topology or geometric intersections.
- * Params: process, cell, tets; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static bool appendPyramidCellTets(const ProcessDSMC& process,
                                   const DsmcCell& cell,
                                   vector<InitTetLocal>& tets)
@@ -839,18 +587,7 @@ static bool appendPyramidCellTets(const ProcessDSMC& process,
                            apex,
                            tets);
 }
-/*
- * appendCenterFaceTet: works with mesh topology or geometric intersections.
- * Params: process, cellLocal, faceLocal, tri, tets; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static bool appendCenterFaceTet(const ProcessDSMC& process,
                                 int cellLocal,
                                 int faceLocal,
@@ -889,18 +626,7 @@ static bool appendCenterFaceTet(const ProcessDSMC& process,
     tets.push_back(tet);
     return true;
 }
-/*
- * appendCenterFaceTets: works with mesh topology or geometric intersections.
- * Params: process, cellLocal, cell, tets; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static bool appendCenterFaceTets(const ProcessDSMC& process,
                                  int cellLocal,
                                  const DsmcCell& cell,
@@ -935,18 +661,7 @@ static bool appendCenterFaceTets(const ProcessDSMC& process,
     }
     return !tets.empty();
 }
-/*
- * buildCellInitTets: works with mesh topology or geometric intersections.
- * Params: process, cellLocal, tets; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static bool buildCellInitTets(const ProcessDSMC& process,
                               int cellLocal,
                               vector<InitTetLocal>& tets)
@@ -962,18 +677,7 @@ static bool buildCellInitTets(const ProcessDSMC& process,
     tets.clear();
     return appendCenterFaceTets(process, cellLocal, cell, tets);
 }
-/*
- * sampleCellLocation: works with mesh topology or geometric intersections.
- * Params: process, cellLocal, dis, gen, out; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+
 static bool sampleCellLocation(const ProcessDSMC& process,
                                int cellLocal,
                                std::uniform_real_distribution<double>& dis,
@@ -1029,18 +733,6 @@ static bool sampleCellLocation(const ProcessDSMC& process,
 }
 }
 
-/*
- * ProcessGSIS: initializes ProcessGSIS state.
- * Params: mesh, process, partinit, nsprocess, mpiCtx; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 ProcessGSIS::ProcessGSIS(meshImport *mesh, ProcessDSMC *process, MeshparticalInitial *partinit, MacroSolver *nsprocess, const MpiContext& mpiCtx)
 {
     this->mpi = &mpiCtx;
@@ -1064,18 +756,6 @@ ProcessGSIS::ProcessGSIS(meshImport *mesh, ProcessDSMC *process, MeshparticalIni
     variablesetup();
 }
 
-/*
- * synchronizeBoundaryTables: applies boundary-condition behavior.
- * Params: none; returns: none.
- * Flow:
- *   - select boundary faces.
- *   - apply the physical model.
- *   - store flux or particle effects.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void ProcessGSIS::synchronizeBoundaryTables()
 {
     if (this->process == nullptr || this->pnsSolver == nullptr) return;
@@ -1083,18 +763,6 @@ void ProcessGSIS::synchronizeBoundaryTables()
     this->process->rebuildBoundaryDerivedState();
 }
 
-/*
- * variablesetup: prepares derived solver state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void ProcessGSIS::variablesetup()
 {
     this->nsresult.assign((size_t)this->icell * 6u, 0.0);
@@ -1114,34 +782,10 @@ void ProcessGSIS::variablesetup()
     refreshNsOwnerRanges(true);
 }
 
-/*
- * ~ProcessGSIS: releases owned buffers and MPI helper state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 ProcessGSIS::~ProcessGSIS()
 {
 }
 
-/*
- * refreshNsOwnerRanges: updates partition ownership or load data.
- * Params: force; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void ProcessGSIS::refreshNsOwnerRanges(bool force)
 {
     if (!this->mpi || !this->mpi->active() || this->pnsSolver == nullptr || this->c_size <= 0)
@@ -1162,18 +806,6 @@ void ProcessGSIS::refreshNsOwnerRanges(bool force)
     }
 }
 
-/*
- * nsOwnerOfGlobalCell: updates partition ownership or load data.
- * Params: globalCell; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 int ProcessGSIS::nsOwnerOfGlobalCell(int globalCell) const
 {
     if (this->pnsSolver == nullptr || this->pnsSolver->NsreMeIndex == nullptr)
@@ -1189,18 +821,6 @@ int ProcessGSIS::nsOwnerOfGlobalCell(int globalCell) const
     return -1;
 }
 
-/*
- * nsLocalOfGlobalCell: works with mesh topology or geometric intersections.
- * Params: globalCell; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 int ProcessGSIS::nsLocalOfGlobalCell(int globalCell) const
 {
     if (this->pnsSolver == nullptr || this->pnsSolver->NsreMeIndex == nullptr)
@@ -1213,18 +833,6 @@ int ProcessGSIS::nsLocalOfGlobalCell(int globalCell) const
     return nsIndex - this->pnsSolver->Nl;
 }
 
-/*
- * dsmcOwnerOfGlobalCell: updates partition ownership or load data.
- * Params: globalCell; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 int ProcessGSIS::dsmcOwnerOfGlobalCell(int globalCell) const
 {
     if (this->process == nullptr || globalCell < 0 || globalCell >= this->mess.Ncell)
@@ -1241,18 +849,6 @@ int ProcessGSIS::dsmcOwnerOfGlobalCell(int globalCell) const
     return -1;
 }
 
-/*
- * dsmcLocalOfGlobalCell: works with mesh topology or geometric intersections.
- * Params: globalCell; returns: index, count, owner, or status value.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 int ProcessGSIS::dsmcLocalOfGlobalCell(int globalCell) const
 {
     if (this->process == nullptr || globalCell < 0 || globalCell >= this->mess.Ncell)
@@ -1263,18 +859,6 @@ int ProcessGSIS::dsmcLocalOfGlobalCell(int globalCell) const
     return local;
 }
 
-/*
- * regsisvariables: couples DSMC data with macroscopic fields.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void ProcessGSIS::regsisvariables()
 {
     if (!this->mpi->active()) return;
@@ -1296,18 +880,7 @@ void ProcessGSIS::regsisvariables()
     refreshNsOwnerRanges(true);
 }
 
-/*
- * macro_iter_process: couples DSMC data with macroscopic fields.
- * Params: maxError, istep; returns: none.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+// Transfers DSMC moments, solves the macroscopic equations, and applies particle corrections.
 void ProcessGSIS::macro_iter_process(double maxError,int istep)
 {
     if (!this->mpi->active()) return;
@@ -1318,23 +891,12 @@ void ProcessGSIS::macro_iter_process(double maxError,int istep)
     MPI_Barrier(calGroup);
     ns->calcCellHot(istep);
     this->dampRejectedHighOrderForNS();
-    ns->nsProcess(1000,maxError,true,istep);
+    ns->nsProcess(800,maxError,true,istep);
     this->NS2DSMC();
     if(ifvary == 1){this->molecular_velocity_change();}
 }
 
-/*
- * NS2DSMC: couples DSMC data with macroscopic fields.
- * Params: none; returns: none.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+// Transfers macroscopic target states to the corresponding DSMC cells.
 void ProcessGSIS::NS2DSMC()
 {
     if (!this->mpi->active()) {return;}
@@ -1437,18 +999,6 @@ void ProcessGSIS::NS2DSMC()
     }
 }
 
-/*
- * isNsMpiHaloNeighborForLowOrder: performs one solver support operation.
- * Params: ns, cell, faceSlot, neighbor; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool ProcessGSIS::isNsMpiHaloNeighborForLowOrder(
     const MacroSolver* ns, int cell, int faceSlot, int neighbor) const
 {
@@ -1466,18 +1016,6 @@ bool ProcessGSIS::isNsMpiHaloNeighborForLowOrder(
     return face < ns->eNface;
 }
 
-/*
- * syncNsHaloLowOrderState: performs one solver support operation.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void ProcessGSIS::syncNsHaloLowOrderState()
 {
     if (!this->mpi->active()) return;
@@ -1529,18 +1067,7 @@ void ProcessGSIS::syncNsHaloLowOrderState()
     }
 }
 
-/*
- * DSMC2NS: couples DSMC data with macroscopic fields.
- * Params: none; returns: none.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+// Transfers sampled DSMC moments to NS cells and records coupling acceptance.
 void ProcessGSIS::DSMC2NS()
 {
     if (!this->mpi->active()) return;
@@ -1761,64 +1288,60 @@ void ProcessGSIS::DSMC2NS()
         MPI_Allreduce(localFilter, globalFilter, 11, MPI_LONG_LONG, MPI_SUM, this->calGroup);
         if (this->mpi->activeLeader())
         {
-            cout << "GSIS_COUPLE_FILTER_SUM"
-                 << " mode=macro_active"
-                 << " highOrderMode=active"
+            cout << "GSIS_COUPLING"
                  << " step=" << ((this->process != nullptr) ? this->process->istep : -1)
-                 << " source=" << macroSourceName
-                 << " skippedMacro=" << globalFilter[0]
-                 << " zeroHighOrder=" << globalFilter[1]
-                 << " lowSampleMacro=" << globalFilter[2]
-                 << " lowSampleHighOrder=" << globalFilter[3]
-                 << " macroFiniteReject=" << globalFilter[4]
-                 << " macroLowerBoundsReject=" << globalFilter[5]
-                 << " macroUpperBoundsReject=" << globalFilter[6]
-                 << " knCellUpperBoundsReject=" << globalFilter[7]
-                 << " highOrderFiniteReject=" << globalFilter[8]
-                 << " highOrderLowerBoundsReject=" << globalFilter[9]
-                 << " highOrderUpperBoundsReject=" << globalFilter[10]
-                 << " sampleFilter=" << (this->dsmc2nsCoupling.sampleFilterEnabled ? 1 : 0)
-                 << " macroMinSamples=" << this->dsmc2nsCoupling.macroMinSampleCount
-                 << " highOrderSampleFilter=" << (this->dsmc2nsCoupling.highOrderSampleFilterEnabled ? 1 : 0)
-                 << " highOrderMinSamples=" << this->dsmc2nsCoupling.highOrderMinSampleCount
-                 << " macroLowerBounds=" << (this->dsmc2nsCoupling.macroLowerBoundsEnabled ? 1 : 0)
-                 << " macroUpperBounds=" << (this->dsmc2nsCoupling.macroUpperBoundsEnabled ? 1 : 0)
-                 << " rhoMin=" << this->dsmc2nsCoupling.rhoMin
-                 << " rhoMax=" << this->dsmc2nsCoupling.rhoMax
-                 << " Tmin=" << this->dsmc2nsCoupling.tMin
-                 << " Tmax=" << this->dsmc2nsCoupling.tMax
-                 << " Trmin=" << this->dsmc2nsCoupling.trMin
-                 << " Trmax=" << this->dsmc2nsCoupling.trMax
-                 << " MaMin=" << this->dsmc2nsCoupling.maMin
-                 << " MaMax=" << this->dsmc2nsCoupling.maMax
                  << " knCellUpperBound=" << (this->dsmc2nsCoupling.knCellUpperBoundEnabled ? 1 : 0)
-                 << " knCellMax=" << this->dsmc2nsCoupling.knCellMax
-                 << " highOrderLowerBounds=" << (this->dsmc2nsCoupling.highOrderLowerBoundsEnabled ? 1 : 0)
-                 << " highOrderUpperBounds=" << (this->dsmc2nsCoupling.highOrderUpperBoundsEnabled ? 1 : 0)
-                 << " stressRatioMin=" << this->dsmc2nsCoupling.stressRatioMin
-                 << " stressRatioMax=" << this->dsmc2nsCoupling.stressRatioMax
-                 << " heatRatioMin=" << this->dsmc2nsCoupling.heatRatioMin
-                 << " heatRatioMax=" << this->dsmc2nsCoupling.heatRatioMax
-                 << " rotHeatRatioMin=" << this->dsmc2nsCoupling.rotHeatRatioMin
-                 << " rotHeatRatioMax=" << this->dsmc2nsCoupling.rotHeatRatioMax
+                 << " knRejected=" << globalFilter[7]
                  << endl;
+            if (this->dsmc2nsCoupling.logFilterDetails)
+            {
+                cout << "GSIS_COUPLE_FILTER_SUM"
+                     << " mode=macro_active"
+                     << " highOrderMode=active"
+                     << " step=" << ((this->process != nullptr) ? this->process->istep : -1)
+                     << " source=" << macroSourceName
+                     << " skippedMacro=" << globalFilter[0]
+                     << " zeroHighOrder=" << globalFilter[1]
+                     << " lowSampleMacro=" << globalFilter[2]
+                     << " lowSampleHighOrder=" << globalFilter[3]
+                     << " macroFiniteReject=" << globalFilter[4]
+                     << " macroLowerBoundsReject=" << globalFilter[5]
+                     << " macroUpperBoundsReject=" << globalFilter[6]
+                     << " knCellUpperBoundsReject=" << globalFilter[7]
+                     << " highOrderFiniteReject=" << globalFilter[8]
+                     << " highOrderLowerBoundsReject=" << globalFilter[9]
+                     << " highOrderUpperBoundsReject=" << globalFilter[10]
+                     << " sampleFilter=" << (this->dsmc2nsCoupling.sampleFilterEnabled ? 1 : 0)
+                     << " macroMinSamples=" << this->dsmc2nsCoupling.macroMinSampleCount
+                     << " highOrderSampleFilter=" << (this->dsmc2nsCoupling.highOrderSampleFilterEnabled ? 1 : 0)
+                     << " highOrderMinSamples=" << this->dsmc2nsCoupling.highOrderMinSampleCount
+                     << " macroLowerBounds=" << (this->dsmc2nsCoupling.macroLowerBoundsEnabled ? 1 : 0)
+                     << " macroUpperBounds=" << (this->dsmc2nsCoupling.macroUpperBoundsEnabled ? 1 : 0)
+                     << " rhoMin=" << this->dsmc2nsCoupling.rhoMin
+                     << " rhoMax=" << this->dsmc2nsCoupling.rhoMax
+                     << " Tmin=" << this->dsmc2nsCoupling.tMin
+                     << " Tmax=" << this->dsmc2nsCoupling.tMax
+                     << " Trmin=" << this->dsmc2nsCoupling.trMin
+                     << " Trmax=" << this->dsmc2nsCoupling.trMax
+                     << " MaMin=" << this->dsmc2nsCoupling.maMin
+                     << " MaMax=" << this->dsmc2nsCoupling.maMax
+                     << " knCellUpperBound=" << (this->dsmc2nsCoupling.knCellUpperBoundEnabled ? 1 : 0)
+                     << " knCellMax=" << this->dsmc2nsCoupling.knCellMax
+                     << " highOrderLowerBounds=" << (this->dsmc2nsCoupling.highOrderLowerBoundsEnabled ? 1 : 0)
+                     << " highOrderUpperBounds=" << (this->dsmc2nsCoupling.highOrderUpperBoundsEnabled ? 1 : 0)
+                     << " stressRatioMin=" << this->dsmc2nsCoupling.stressRatioMin
+                     << " stressRatioMax=" << this->dsmc2nsCoupling.stressRatioMax
+                     << " heatRatioMin=" << this->dsmc2nsCoupling.heatRatioMin
+                     << " heatRatioMax=" << this->dsmc2nsCoupling.heatRatioMax
+                     << " rotHeatRatioMin=" << this->dsmc2nsCoupling.rotHeatRatioMin
+                     << " rotHeatRatioMax=" << this->dsmc2nsCoupling.rotHeatRatioMax
+                     << endl;
+            }
         }
     }
     ns->origin2Conservation();
 }
 
-/*
- * reconstructLowOrderForNS: couples DSMC data with macroscopic fields.
- * Params: none; returns: none.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void ProcessGSIS::reconstructLowOrderForNS()
 {
     if (!this->mpi->active()) return;
@@ -2037,7 +1560,7 @@ void ProcessGSIS::reconstructLowOrderForNS()
         };
         MPI_Allreduce(localSourceCount, globalSourceCount, 5, MPI_LONG_LONG, MPI_SUM, this->calGroup);
         MPI_Allreduce(localExtra, globalExtra, 4, MPI_LONG_LONG, MPI_SUM, this->calGroup);
-        if (this->mpi->activeLeader())
+        if (this->mpi->activeLeader() && this->dsmc2nsCoupling.logFilterDetails)
         {
             cout << "LOW_ORDER_HARMONIC"
                  << " direct=" << globalSourceCount[MACRO_DIRECT_DSMC]
@@ -2151,18 +1674,6 @@ void ProcessGSIS::reconstructHighOrderForNS()
     }
 }
 
-/*
- * dampRejectedHighOrderForNS: couples DSMC data with macroscopic fields.
- * Params: none; returns: none.
- * Flow:
- *   - map ownership.
- *   - filter or reconstruct fields.
- *   - write accepted coupled state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 void ProcessGSIS::dampRejectedHighOrderForNS()
 {
     if (!this->mpi->active()) return;
@@ -2224,23 +1735,11 @@ void ProcessGSIS::dampRejectedHighOrderForNS()
     }
 }
 
-/*
- * molecular_velocity_change: updates particles or particle-derived state.
- * Params: none; returns: none.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
+// Adjusts particle counts, velocities, and rotational energies to accepted macroscopic targets.
 void ProcessGSIS::molecular_velocity_change()
 {
     if (!this->mpi->active()) return;
     MeshparticalInitial *partinit = this->partinit;
-    double Neff = this->mess.Neff;
     int ns_ifnan = 0;
     const bool useAcceptanceGate = this->dsmc2ns_acceptance_ready;
     long long skippedByDsmc2NsReject = 0;
@@ -2254,6 +1753,7 @@ void ProcessGSIS::molecular_velocity_change()
             continue;
         }
         int meshindex = this->process->local_cells[i];
+        const double Neff = partinit->particleWeight(meshindex);
         ParticleBucketSoA &bucket = this->process->currParticles(meshindex);
         double n_dsmc, n_ns, n_change = 0.0,area;
         double u_ns[3], u_change[3] = {0,0,0};
@@ -2353,18 +1853,6 @@ void ProcessGSIS::molecular_velocity_change()
     else {if (this->mpi->activeLeader()){cout << "The solution from ns solver is nan, particle velocities have not been shifted!" << endl;}}
 }
 
-/*
- * replication: performs one solver support operation.
- * Params: i, np_modify, u_ns, T_ns, Tr_ns; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool ProcessGSIS::replication(int i, int np_modify, double *u_ns, double T_ns, double Tr_ns)
 {
     auto& gen = partinit->thread_rng();
@@ -2414,18 +1902,6 @@ bool ProcessGSIS::replication(int i, int np_modify, double *u_ns, double T_ns, d
     return true;
 }
 
-/*
- * MaxwellianSample: updates particles or particle-derived state.
- * Params: part, u, T, Tr, i; returns: updated particle.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 particle ProcessGSIS::MaxwellianSample(particle part, double *u, double T, double Tr, int i)
 {
     auto& gen = partinit->thread_rng();
@@ -2448,18 +1924,6 @@ particle ProcessGSIS::MaxwellianSample(particle part, double *u, double T, doubl
     return part;
 }
 
-/*
- * randomlocation: updates particles or particle-derived state.
- * Params: part, i; returns: updated particle.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 particle ProcessGSIS::randomlocation(particle part, int i)
 {
     auto& gen = partinit->thread_rng();
@@ -2475,18 +1939,6 @@ particle ProcessGSIS::randomlocation(particle part, int i)
     return part;
 }
 
-/*
- * deletion: performs one solver support operation.
- * Params: i, np_modify; returns: success or decision flag.
- * Flow:
- *   - check inputs.
- *   - process local arrays.
- *   - update outputs or member state.
- * Side effects are kept in object fields, buffers, files, or MPI-visible data.
- * Callers are expected to provide valid local/global indices and initialized solver state.
- * Uses the current local/global ownership maps prepared by initialization.
- * Keeps the existing array layout and updates only the documented outputs.
- */
 bool ProcessGSIS::deletion(int i, int np_modify)
 {
     auto& gen = partinit->thread_rng();

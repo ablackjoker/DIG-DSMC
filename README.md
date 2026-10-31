@@ -1,120 +1,49 @@
-# DIG-appolo
+# DIG-DSMC Apollo case
 
-DSMC/NS parallel solver case for the Apollo mesh.
+Three-dimensional Apollo return-capsule case using the DIG-augmented DSMC solver. The lightweight equilibrium-box benchmark is available on [master](https://github.com/ablackjoker/DIG-DSMC/tree/master).
 
-## Basic Requirements
+## Parameters
 
-To compile and run this code on another machine, the basic requirements are:
-
-- Linux or Linux-based HPC environment
-- MPI runtime and MPI compiler wrapper, such as Intel MPI, OpenMPI, or MPICH
-- C++11-compatible compiler
-- METIS library and headers
-- GKlib library and headers
-- Matching Fluent CAS mesh file
-- Enough CPU cores and memory for the selected mesh and particle count
-
-## Build Notes
-
-The current `Makefile` is configured for an Intel/HPC environment:
-
-```makefile
-CC := mpiicpc
-CFLAGS := -O3 -xSKYLAKE-AVX512 -qopt-zmm-usage=high
-```
-
-On a different machine, update the compiler and dependency paths in `Makefile`:
-
-```makefile
-MPI_INCLUDE :=
-MPI_LIB :=
-METIS_INCLUDE :=
-METIS_LIB :=
-GK_INCLUDE :=
-GK_LIB :=
-```
-
-For a more portable first build, the compiler settings may be changed to something like:
-
-```makefile
-CC := mpic++
-CFLAGS := -O3 -std=c++11
-```
-
-Then build with:
-
-```bash
-make
-```
-
-## Mesh And Case Settings
-
-The default mesh path is:
-
-```text
-./mesh/3dapollo372500.cas
-```
-
-The current code has the mesh cell count hard-coded in `src/meshImport.h`:
-
-```cpp
-const int NCELL = 372500;
-```
-
-If a different mesh is used, make sure this value matches the mesh cell count.
-
-## Basic Case Parameters
-
-The current Apollo case is configured in the source code with the following
-basic settings:
-
-| Quantity | Value |
+| Parameter | Value |
 | --- | --- |
-| Freestream Mach number | `Ma = 5` |
-| Knudsen number | `Kn = 0.01` |
-| Angle of attack | `30 deg` |
-| Reference length | `L0 = 3.912 m` |
-| Freestream temperature | `T_in = 142.2 K` |
-| Wall temperature | `T_w = 300 K` |
-| Reference temperature | `T_ref = 273.15 K` |
-| Mesh cell count | `NCELL = 372500` |
-| Initial particles per cell | `Npinitial = 100` |
-| Approximate initial particle count | `37250000` |
-| Total DSMC/DIG evolution steps | `NTOTAL = 10000` |
-| Exponential averaging startup steps | `NSCHEME = 2000` |
-| Sampling start step | `NSS = 5000` |
+| Mesh | `mesh/3dapollo372500.cas`; 372500 cells |
+| Mach / Knudsen number | 5 / 0.01 |
+| Reference length | 3.912 m |
+| Freestream / wall temperature | 142.2 K / 300 K |
+| Boundary tags | Interior 3; inlet 4; outlet 5; diffuse wall 6 |
+| Initial particle target | 100 per cell |
+| Rotational collision number `zr` | 2.59 |
+| Rotational relaxation probability `P_relax` | 0.25 |
+| Random seed | 20261015; streams derived from MPI rank |
+| DSMC steps / sampling start | 10000 / 5000 |
+| DIG interval / first coupling step | 100 steps / step 200 |
+| NS iteration cap / residual tolerance | 800 per DIG call / 1e-6 |
 
-## Run
+Parameters are compiled into `src/`; rebuild after changing them. The initial macroscopic solve also uses a residual tolerance of 1e-6. High-order ramping, sample-count and bound filters, the Kn-cell upper-bound filter, low-order harmonic reconstruction, and exponential weighting of DSMC-to-NS data are disabled in the default configuration. Finite-value checks remain active. Environment variables beginning with `DSMC2NS_` can override coupling settings.
 
-`SubmitJob.lsf` is not required for running the code. If MPI is available and
-the working directory and paths are set correctly, the executable can be run
-directly with `mpirun`.
+## Build and run
 
-Run from the repository root, or update the relative mesh/output paths in the
-code and run script accordingly:
+Use a C++11 compiler, GNU Make, MPI, and METIS/GKlib libraries with 32-bit METIS indices and reals. The existing Makefile contains Intel compiler settings and machine-specific dependency paths. Set these for your machine; for example, with a GNU MPI compiler wrapper:
 
 ```bash
-mpirun -np 160 ./main_mpiDSMC_ht > log.txt
+mkdir -p obj cellDistribute nsTemp statisticResults
+make clean
+make -j4 CC=mpic++ CFLAGS="-O3 -std=c++11" \
+  METIS_INCLUDE="-I/path/to/metis/include" METIS_LIB="-L/path/to/metis/lib" \
+  GK_INCLUDE="-I/path/to/GKlib/include" GK_LIB="-L/path/to/GKlib/lib"
 ```
 
-`SubmitJob.lsf` is only an optional example for an LSF cluster. Before using it
-on another system, update the queue name, core count, module loads, executable
-path, and any mesh/output paths to match that machine:
+Build from source after updating this branch so that existing object files and executables are replaced. Run from the repository root:
 
 ```bash
-bsub < SubmitJob.lsf
+export OMP_NUM_THREADS=1
+mpiexec -n 160 ./main_mpiDSMC_ht ./mesh/3dapollo372500.cas > run.log 2>&1
 ```
 
-At least two MPI processes are required. Rank 0 reads and distributes the mesh, and the compute ranks are `size - 1`.
+The process count can be adjusted to the available resources; this remains a large case with an initial target of approximately 37.25 million simulation particles. For LSF, configure the queue and process count in `SubmitJob.lsf`, then submit with `bsub < SubmitJob.lsf`.
 
-## Output Directories
+Macroscopic fields and per-cell particle counts are written to `statisticResults/`; macroscopic-solver outputs are written to `nsTemp/`.
 
-The following directories are expected by the code and are tracked with `.gitkeep` files:
+## License
 
-```text
-cellDistribute/
-nsTemp/
-statisticResults/
-```
-
-DSMC output is written mainly to `statisticResults/`, and NS output is written to `nsTemp/`.
+[MIT License](LICENSE), copyright (c) 2026 DIG-DSMC contributors. METIS/GKlib dependencies retain their own licenses.
