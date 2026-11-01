@@ -44,7 +44,9 @@ CFLAGS := -O3 -std=c++11
 Then build with:
 
 ```bash
-make
+mkdir -p obj cellDistribute nsTemp statisticResults
+make clean
+make -j4
 ```
 
 ## Mesh And Case Settings
@@ -100,6 +102,9 @@ The current cavity case is configured in the source code with the following basi
 | Moving wall temperature | `T_wall = 1.0` |
 | Mesh cell count | `NCELL = 216000` |
 | Initial particles per cell | `Npinitial = 100` |
+| Rotational collision number | `zr = 2.59` |
+| Rotational relaxation probability | `P_relax = 0.25` |
+| Random seed | `20261015`; streams derived from MPI rank |
 | Approximate initial particle count | `21600000` |
 | Total DSMC/DIG evolution steps | `NTOTAL = 10000` |
 | Exponential averaging startup steps | `NSCHEME = 500` |
@@ -152,3 +157,7 @@ DSMC output is written mainly to `statisticResults/`, and NS output is written t
 ## Notes For GitHub
 
 The `obj/` directory is intentionally ignored and not tracked in this branch because it contains compiled object files.
+
+## License
+
+[MIT License](LICENSE), copyright (c) 2026 DIG-DSMC contributors. METIS/GKlib dependencies retain their own licenses.

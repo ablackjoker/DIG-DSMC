@@ -207,10 +207,18 @@ private:
     vector<BoundaryEmitPatch> boundaryEmitCache;
     bool boundaryEmitCacheDirty = true;
     unordered_map<int, BoundarySurfaceTally> boundarySteadyTally;
+    long long cellWeightClones = 0;
+    long long cellWeightDeletes = 0;
     vector<unsigned int> cacheTouchedStamp;
     vector<int> cacheTouchedCells;
+    vector<unsigned int> cacheInsertStamp;
+    vector<int> cacheInsertIndex;
+    vector<int> cacheInsertLocalCells;
+    vector<size_t> cacheInsertCopies;
+    vector<int> cacheInsertCopyCount;
     vector<double> out2dat_buffer;
     unsigned int cacheTouchedEpoch = 1u;
+    unsigned int cacheInsertEpoch = 1u;
     void rebuildFaceTraversalCache();
     void rebuildFaceCrossCache();
     void rebuildBoundaryEmitCache();
@@ -258,10 +266,10 @@ private:
     void guardInvalidMacro(vector<double>& target, int localCell);
     void writeLocalMacro(int localCell, const MacroMoments& moments);
     void writeRecordMacro(int localCell, const MacroMoments& moments);
+    int cellWeightCopyCount(const particle& part, int destinationGlobalCell);
+
     bool ownsBoundaryFace(int localFace) const;
-    void recordBoundaryStressHeat(int localFace, const double velocityPre[3],
-                                  const double velocityPost[3],
-                                  double rotPre, double rotPost);
+    void recordBoundaryStressHeat(int localFace, const double velocityPre[3], const double velocityPost[3], double rotPre, double rotPost, double representedWeight);
 public:
     enum Dsmc2NsSparseState : unsigned char
     {

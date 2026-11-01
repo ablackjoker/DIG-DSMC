@@ -17,6 +17,7 @@
 #include <queue>
 #include <metis.h>
 #include <cfloat>
+#include <cmath>
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -39,6 +40,10 @@ const int VAR3 = 6;
 const int NCELL = 216000;
 const int NTOTAL = 10000;
 const int Npinitial = 100;
+const bool EnableSpatialCellWeight = true;
+const int TargetParticlesPerCell = Npinitial;
+const double CellWeightLargeNeighborRatioWarning = 20.0;
+const int RANDOM_SEED = 20261015u;
 const int NSS = 3000;
 const int NDSIPLAY = 50;
 const bool EnableBoundaryStressHeatStatistic = false;
@@ -171,7 +176,7 @@ struct meshMessage
     int Ncell, Nface, Npoint, Nk, bcnumber = 0, Nghost = 0;
     double Area = 0;
     double Ma = 3, Kn = 0.05, cfl = 0.62;
-    double gamma, dr = 2, dv = 0, zr = 2.226, zv = 0, omega = 0.74;
+    double gamma, dr = 2, dv = 0, zr = 2.59, zv = 0, omega = 0.74;
     int var = 6, qn = 3;
     double f_tra = 2.261, f_rot = 1.499;
     double delta_rp, delta_sm, omeag0, omeag1;
@@ -196,7 +201,7 @@ public:
     int edge1stLocation = 0;
     double Area = 0;
     double Ma = 3, Kn = 0.05, cfl = 0.62;
-    double gamma, dr = 2, dv = 0, zr = 2.226, zv = 0, omega = 0.74;
+    double gamma, dr = 2, dv = 0, zr = 2.59, zv = 0, omega = 0.74;
     int var = 6, qn = 2;
     int xn = 42, yn = 36, zn = 36;
     double maxv = 15, cfl_psu;
@@ -225,6 +230,9 @@ public:
     int Npc_initial;
     double Neff;
     double dtime;
+    bool spatialCellWeightEnabled = EnableSpatialCellWeight;
+    int targetParticlesPerCell = TargetParticlesPerCell;
+    vector<double> cellNeff;
     meshImport();
     meshImport(const char *filePath, idx_t nParts, double sfactor);
     meshImport(const char *filePath, bool tag, idx_t nParts, double sfactor);
@@ -236,6 +244,10 @@ public:
     bool readCells(stringstream &sst, ifstream &infile);
     bool readNodes(stringstream &sst, ifstream &infile);
     bool readPeriodic(stringstream &sst, ifstream &infile);
+    bool buildCellWeights();
+
+    double particleWeight(int globalCell) const;
+
     bool preprocess(idx_t nParts);
     bool setFaceCellNew();
     bool getZoneid(stringstream &comment);

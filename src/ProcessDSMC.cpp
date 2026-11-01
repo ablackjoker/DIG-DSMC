@@ -625,6 +625,49 @@ const ParticleBucketSoA &ProcessDSMC::currParticles(int globalCell) const
     return this->partinit->cell_particles_curr[(std::size_t)localCell];
 }
 
+int ProcessDSMC::cellWeightCopyCount(const particle& part, int destinationGlobalCell)
+{
+    if (this->partinit == nullptr) return 1;
+
+    int sourceGlobalCell = part.p_weight_origin_gid;
+    if (sourceGlobalCell < 0) sourceGlobalCell = destinationGlobalCell;
+    if (sourceGlobalCell == destinationGlobalCell) return 1;
+
+    const double sourceWeight = this->partinit->particleWeight(sourceGlobalCell);
+    const double destinationWeight = this->partinit->particleWeight(destinationGlobalCell);
+    if (!(sourceWeight > 0.0) || !(destinationWeight > 0.0) ||
+        !std::isfinite(sourceWeight) || !std::isfinite(destinationWeight))
+    {
+        cerr << "CELL_WEIGHT_CONVERSION_INVALID source=" << sourceGlobalCell
+             << " destination=" << destinationGlobalCell
+             << " sourceWeight=" << sourceWeight
+             << " destinationWeight=" << destinationWeight << endl;
+        MPI_Abort(this->comm, 1);
+        return 0;
+    }
+
+    const double ratio = sourceWeight / destinationWeight;
+    if (!(ratio >= 0.0) || !std::isfinite(ratio) || ratio > 1.0e8)
+    {
+        cerr << "CELL_WEIGHT_CONVERSION_RATIO_INVALID source=" << sourceGlobalCell
+             << " destination=" << destinationGlobalCell
+             << " ratio=" << ratio << endl;
+        MPI_Abort(this->comm, 1);
+        return 0;
+    }
+    if (std::fabs(ratio - 1.0) <= 1.0e-12) return 1;
+
+    int copies = (int)std::floor(ratio);
+    const double fractional = ratio - (double)copies;
+    if (fractional > 0.0)
+    {
+        auto& gen = this->partinit->thread_rng();
+        auto& dis = this->partinit->get_uniform();
+        if (dis(gen) < fractional) ++copies;
+    }
+    return copies;
+}
+
 int ProcessDSMC::particleCount(int globalCell) const
 {
     if (this->partinit == nullptr)
@@ -1133,9 +1176,7 @@ bool ProcessDSMC::ownsBoundaryFace(int localFace) const
     return ownedCell >= 0 && this->ownerOfGlobalCell(ownedCell) == this->c_rank;
 }
 
-void ProcessDSMC::recordBoundaryStressHeat(int localFace, const double velocityPre[3],
-                                           const double velocityPost[3],
-                                           double rotPre, double rotPost)
+void ProcessDSMC::recordBoundaryStressHeat(int localFace, const double velocityPre[3], const double velocityPost[3], double rotPre, double rotPost, double representedWeight)
 {
     if (!EnableBoundaryStressHeatStatistic) return;
     if (this->istep <= NSS) return;
@@ -1158,11 +1199,11 @@ void ProcessDSMC::recordBoundaryStressHeat(int localFace, const double velocityP
     const double energyTransDelta = 0.5 * (vPost2 - vPre2);
     const double energyRotDelta = rotPost - rotPre;
     BoundarySurfaceTally& tally = this->boundarySteadyTally[globalFace];
-    tally.hits += 1.0;
+    tally.hits += representedWeight;
     for (int d = 0; d < AXIS_WIDTH; ++d)
-        tally.momentumDelta[(std::size_t)d] += momentumDelta[d];
-    tally.energyTransDelta += energyTransDelta;
-    tally.energyRotDelta += energyRotDelta;
+        tally.momentumDelta[(std::size_t)d] += representedWeight * momentumDelta[d];
+    tally.energyTransDelta += representedWeight * energyTransDelta;
+    tally.energyRotDelta += representedWeight * energyRotDelta;
 }
 
 void ProcessDSMC::CrossboundarySwitch(particle* part, int& cellid, int& ifout, double& dtleft,int crossfid,double t,int triangle_tag)
@@ -1287,7 +1328,9 @@ void ProcessDSMC::CrossboundarySwitch(particle* part, int& cellid, int& ifout, d
             part->p_velocity[AXIS_Y],
             part->p_velocity[AXIS_Z]
         };
-        recordBoundaryStressHeat(crossfid, velocityPre, velocityPost, rotPre, part->p_Ir);
+        const int weightCell = (part->p_weight_origin_gid >= 0) ? part->p_weight_origin_gid : globalOfLocalCell(cellid);
+        const double representedWeight = this->partinit->particleWeight(weightCell);
+        recordBoundaryStressHeat(crossfid, velocityPre, velocityPost, rotPre, part->p_Ir, representedWeight);
     }break;
     case BoundaryRole::TopWall:
     {
@@ -1321,7 +1364,9 @@ void ProcessDSMC::CrossboundarySwitch(particle* part, int& cellid, int& ifout, d
             part->p_velocity[AXIS_Y],
             part->p_velocity[AXIS_Z]
         };
-        recordBoundaryStressHeat(crossfid, velocityPre, velocityPost, rotPre, part->p_Ir);
+        const int weightCell = (part->p_weight_origin_gid >= 0) ? part->p_weight_origin_gid : globalOfLocalCell(cellid);
+        const double representedWeight = this->partinit->particleWeight(weightCell);
+        recordBoundaryStressHeat(crossfid, velocityPre, velocityPost, rotPre, part->p_Ir, representedWeight);
     }break;
     default:
         break;
@@ -1447,6 +1492,7 @@ void ProcessDSMC::advection(int istep)
             part.p_location[2] = bucket.pz[p];
             part.p_Ir = bucket.p_Ir[p];
             part.dt_left = bucket.dt_left[p];
+            part.p_weight_origin_gid = meshindex;
             int cellid = i;
             int crossfid = -1;
             int ifout = 0;
@@ -1524,9 +1570,25 @@ void ProcessDSMC::cache2chain()
         this->cacheTouchedCells.push_back(globalCell);
     };
     const int cache_num = (int)this->recv_cache.size();
+    if ((int)this->cacheInsertStamp.size() != this->iNcell)
+    {
+        this->cacheInsertStamp.assign((std::size_t)this->iNcell, 0u);
+        this->cacheInsertIndex.assign((std::size_t)this->iNcell, -1);
+    }
+    ++this->cacheInsertEpoch;
+    if (this->cacheInsertEpoch == 0u)
+    {
+        std::fill(this->cacheInsertStamp.begin(), this->cacheInsertStamp.end(), 0u);
+        this->cacheInsertEpoch = 1u;
+    }
+    this->cacheInsertLocalCells.clear();
+    this->cacheInsertCopies.clear();
+    this->cacheInsertCopyCount.assign((std::size_t)cache_num, 0);
+
+    // Draw each stochastic conversion once, then count the capacity needed by its target cell.
     for (int j = 0; j < cache_num; ++j)
     {
-        particle parts = this->recv_cache[(std::size_t)j];
+        const particle& parts = this->recv_cache[(std::size_t)j];
         const int localCell = parts.p_mesh_serial;
         const int globalCell = this->globalOfLocalCell(localCell);
         if (globalCell < 0) continue;
@@ -1540,19 +1602,65 @@ void ProcessDSMC::cache2chain()
             continue;
         }
         markTouched(globalCell);
-        ParticleBucketSoA &bucket = this->currParticles(globalCell);
-        parts.p_serial = (int)bucket.size();
-        parts.p_rank_serial = this->c_rank;
-        parts.p_mesh_serial = localCell;
-        parts.dt_left = 0.0;
-        bucket.push_back(parts);
-        if (globalCell < (int)this->partinit->cell_particle_reserve_hint.size())
+
+        const int copies = this->cellWeightCopyCount(parts, globalCell);
+        this->cacheInsertCopyCount[(std::size_t)j] = copies;
+        if (copies <= 0)
         {
-            this->partinit->cell_particle_reserve_hint[(std::size_t)globalCell] =
-                std::max(this->partinit->cell_particle_reserve_hint[(std::size_t)globalCell],
-                         (int)bucket.size());
+            ++this->cellWeightDeletes;
+            continue;
+        }
+        if (copies > 1)
+            this->cellWeightClones += (long long)(copies - 1);
+
+        if (this->cacheInsertStamp[(std::size_t)localCell] != this->cacheInsertEpoch)
+        {
+            this->cacheInsertStamp[(std::size_t)localCell] = this->cacheInsertEpoch;
+            this->cacheInsertIndex[(std::size_t)localCell] = (int)this->cacheInsertLocalCells.size();
+            this->cacheInsertLocalCells.push_back(localCell);
+            this->cacheInsertCopies.push_back((std::size_t)copies);
+        }
+        else
+        {
+            const int index = this->cacheInsertIndex[(std::size_t)localCell];
+            this->cacheInsertCopies[(std::size_t)index] += (std::size_t)copies;
         }
     }
+
+    for (std::size_t batch = 0; batch < this->cacheInsertLocalCells.size(); ++batch)
+    {
+        const int localCell = this->cacheInsertLocalCells[batch];
+        const int globalCell = this->globalOfLocalCell(localCell);
+        if (globalCell >= 0)
+        {
+            ParticleBucketSoA& bucket = this->currParticles(globalCell);
+            bucket.reserve(bucket.size() + this->cacheInsertCopies[batch]);
+        }
+    }
+
+    for (int j = 0; j < cache_num; ++j)
+    {
+        const int copies = this->cacheInsertCopyCount[(std::size_t)j];
+        if (copies <= 0) continue;
+
+        const particle& parts = this->recv_cache[(std::size_t)j];
+        const int localCell = parts.p_mesh_serial;
+        const int globalCell = this->globalOfLocalCell(localCell);
+        if (globalCell < 0 || !this->isOwnedLocalCell(localCell)) continue;
+
+        this->currParticles(globalCell).append_copies(parts, localCell, this->c_rank, copies);
+    }
+
+    for (int localCell : this->cacheInsertLocalCells)
+    {
+        const int globalCell = this->globalOfLocalCell(localCell);
+        if (globalCell < 0 ||
+            globalCell >= (int)this->partinit->cell_particle_reserve_hint.size())
+            continue;
+        const ParticleBucketSoA& bucket = this->currParticles(globalCell);
+        this->partinit->cell_particle_reserve_hint[(std::size_t)globalCell] = std::max(this->partinit->cell_particle_reserve_hint[(std::size_t)globalCell], (int)bucket.size());
+    }
+
     for (auto it = this->partinit->cell_particles_next.begin();
          it != this->partinit->cell_particles_next.end(); )
     {
@@ -1819,7 +1927,8 @@ int ProcessDSMC::computeBoundaryInsertCount(const BoundaryEmitPatch& patch, Boun
               sqrt(gas.tPhysical / this->mess.T_ref) *
               (exp(-(scos * scos)) +
                sqrt(M_PI) * scos * (1.0 + erf(scos)));
-    add_num = add_num / this->mess.Neff + partinit->remainderinpre[(std::size_t)patch.cellLocal];
+    const int globalCell = this->globalOfLocalCell(patch.cellLocal);
+    add_num = add_num / partinit->particleWeight(globalCell) + partinit->remainderinpre[(std::size_t)patch.cellLocal];
     int N_add = floor(add_num);
     partinit->remainderinpre[(std::size_t)patch.cellLocal] = add_num - N_add;
     return N_add;
@@ -1906,6 +2015,7 @@ int ProcessDSMC::emitParticlesFromBoundaryPatch(const BoundaryEmitPatch& patch, 
         particle part;
         part.p_serial = 0;
         part.p_rank_serial = this->c_rank;
+        part.p_weight_origin_gid = this->globalOfLocalCell(patch.cellLocal);
         part.dt_left = 0;
         double u = dis(gen);
         double v = dis(gen);
@@ -1990,7 +2100,8 @@ void ProcessDSMC::collisionDSMC()
         const double S = this->cells[i].area;
         double crm = partinit->crmax[i];
         const double consant_crm = collision_diameter(crm * vrms, collisionDiameterPrefactor);
-        const double pairs = 0.5 * Np_cell * (Np_cell - 1) * this->mess.Neff * consant_crm * this->mess.dtime * this->mess.dt_ref / S + partinit->remainderincoll[i];
+        const double cellNeff = this->partinit->particleWeight(meshindex);
+        const double pairs = 0.5 * Np_cell * (Np_cell - 1) * cellNeff * consant_crm * this->mess.dtime * this->mess.dt_ref / S + partinit->remainderincoll[i];
         const int npairs = (int)floor(pairs);
         partinit->remainderincoll[i] = pairs - npairs;
         tol_collision_pairs += npairs;
@@ -2375,7 +2486,7 @@ void ProcessDSMC::writeAveragedMacro(
     vector<double>& target)
 {
     const double Np = moments.rho;
-    const double Neff = this->mess.Neff;
+    const double Neff = this->partinit->particleWeight(this->globalOfLocalCell(localCell));
     const double S = this->cells[localCell].area;
     double* out = &target[macroOffset(localCell, MACRO_RHO)];
     if (!(Np > kMacroMinDivisor) || !std::isfinite(Np) ||
@@ -2383,6 +2494,7 @@ void ProcessDSMC::writeAveragedMacro(
         !(S > 0.0) || !std::isfinite(S) ||
         !(Neff > 0.0) || !std::isfinite(Neff) ||
         !(this->mess.n_ref > 0.0) || !std::isfinite(this->mess.n_ref) ||
+
         !(this->mess.dr > 0.0) || !std::isfinite(this->mess.dr))
     {
         for (int j = 0; j < MACRO_WIDTH; ++j)
@@ -2447,7 +2559,8 @@ void ProcessDSMC::writeLocalMacro(int localCell, const MacroMoments& moments)
         }
         return;
     }
-    out[MACRO_RHO] = this->mess.Neff/this->cells[localCell].area*Nl/this->mess.n_ref;
+    const double Neff = this->partinit->particleWeight(this->globalOfLocalCell(localCell));
+    out[MACRO_RHO] = Neff/this->cells[localCell].area*Nl/this->mess.n_ref;
     out[MACRO_UX] = moments.velocity[AXIS_X]/Nl;
     out[MACRO_UY] = moments.velocity[AXIS_Y]/Nl;
     out[MACRO_UZ] = moments.velocity[AXIS_Z]/Nl;
@@ -2474,7 +2587,7 @@ void ProcessDSMC::writeLocalMacro(int localCell, const MacroMoments& moments)
 void ProcessDSMC::writeRecordMacro(int localCell, const MacroMoments& moments)
 {
     double Np = moments.rho;
-    double Neff = this->mess.Neff;
+    const double Neff = this->partinit->particleWeight(this->globalOfLocalCell(localCell));
     double S = this->cells[localCell].area;
     double* out = &this->record[macroOffset(localCell, MACRO_RHO)];
     out[MACRO_RHO] = Neff/S*Np/this->mess.n_ref;
@@ -2664,7 +2777,7 @@ bool ProcessDSMC::outBoundaryStressHeat(int istep)
     const bool useSteady = (istep > NSS);
     const double sampleSteps = useSteady ? static_cast<double>(istep - NSS) : 1.0;
     const double timeScale = (this->mess.dtime > 0.0 && sampleSteps > 0.0)
-        ? this->mess.Neff / (this->mess.dtime * sampleSteps)
+        ? 1.0 / (this->mess.dtime * sampleSteps)
         : 0.0;
     struct WallFaceOutput
     {
@@ -2779,8 +2892,10 @@ bool ProcessDSMC::outBoundaryStressHeat(int istep)
         };
         auto writeVectorBlock = [&](int variableId, double (WallFaceOutput::*field)[3])
         {
+
             fout << "(300 (" << variableId << " " << zone.zoneId << " " << 3
                  << " 0 0 " << zone.firstFace << " " << zone.lastFace << ")" << endl;
+
             fout << "(" << endl;
             for (int face = zone.firstFace - 1; face < zone.lastFace; ++face)
             {

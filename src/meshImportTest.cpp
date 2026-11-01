@@ -58,6 +58,9 @@ int main(int argc, char **argv)
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(comm, &rank);
     MPI_Comm_size(comm, &size);
+    std::srand(RANDOM_SEED + static_cast<unsigned int>(rank));
+    if (rank == 0)
+        cout << "Random seed: " << RANDOM_SEED << ", MPI ranks: " << size << endl;
     MPI_Comm compute_comm = MPI_COMM_NULL;
     const bool active = MpiContext::activeFromWorldRank(rank);
     int color = active ? 0 : MPI_UNDEFINED;

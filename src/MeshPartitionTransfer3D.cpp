@@ -1,3 +1,5 @@
+// Partitions the initial mesh and distributes owned cells, halo cells, and geometry to compute ranks.
+
 #include "MeshPartitionTransfer3D.h"
 
 #include "MeshparticalInitial.h"
@@ -19,15 +21,18 @@ namespace
     const int kGeomFaceSplitTag = 4305;
     const int kGeomNodeXyzTag = 4306;
     template <typename T>
+
     inline T *partition3dDataOrNull(std::vector<T> &values)
     {
         return values.empty() ? nullptr : values.data();
     }
     template <typename T>
+
     inline T *partition3dDataOrNull(const std::vector<T> &values)
     {
         return values.empty() ? nullptr : const_cast<T *>(values.data());
     }
+
     inline void prefixSumCounts(const std::vector<int> &counts, std::vector<int> &displs)
     {
         displs.assign(counts.size(), 0);
@@ -154,6 +159,25 @@ bool MeshPartitionTransfer3D::broadcastInitialParticleCounts(std::vector<int> &n
             npcByCell[(std::size_t)i] = m_mesh->Npc_exa[i];
     }
     return MPI_Bcast(npcByCell.data(), m_partinit->mess.Ncell, MPI_INT, 0, m_mpi->comm) == MPI_SUCCESS;
+}
+
+bool MeshPartitionTransfer3D::broadcastCellWeights(std::vector<double> &weightsByCell) const
+{
+    if (m_partinit == nullptr || m_mpi == nullptr) return false;
+
+    const int ncell = m_partinit->mess.Ncell;
+    if (ncell <= 0) return false;
+    weightsByCell.assign((std::size_t)ncell, m_partinit->mess.Neff);
+    int valid = 1;
+    if (isRoot())
+    {
+        valid = m_mesh != nullptr && (int)m_mesh->cellNeff.size() == ncell;
+        if (valid) weightsByCell = m_mesh->cellNeff;
+    }
+    if (MPI_Bcast(&valid, 1, MPI_INT, 0, m_mpi->comm) != MPI_SUCCESS || !valid)
+        return false;
+
+    return MPI_Bcast(weightsByCell.data(), ncell, MPI_DOUBLE, 0, m_mpi->comm) == MPI_SUCCESS;
 }
 
 bool MeshPartitionTransfer3D::isRoot() const

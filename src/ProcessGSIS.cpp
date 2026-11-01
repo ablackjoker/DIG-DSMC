@@ -1673,7 +1673,6 @@ void ProcessGSIS::molecular_velocity_change()
 {
     if (!this->mpi->active()) return;
     MeshparticalInitial *partinit = this->partinit;
-    double Neff = this->mess.Neff;
     int ns_ifnan = 0;
     const bool useAcceptanceGate = this->dsmc2ns_acceptance_ready;
     long long skippedByDsmc2NsReject = 0;
@@ -1687,6 +1686,7 @@ void ProcessGSIS::molecular_velocity_change()
             continue;
         }
         int meshindex = this->process->local_cells[i];
+        const double Neff = partinit->particleWeight(meshindex);
         ParticleBucketSoA &bucket = this->process->currParticles(meshindex);
         double n_dsmc, n_ns, n_change = 0.0,area;
         double u_ns[3], u_change[3] = {0,0,0};

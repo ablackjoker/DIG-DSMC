@@ -1,3 +1,5 @@
+// Distributes the initial mesh and generates particle positions, velocities, and rotational energies.
+
 # include "MeshparticalInitial.h"
 # include "meshImport.h"
 # include "math.h"
@@ -23,10 +25,12 @@ namespace
 
 struct ParticleInitialLocalOps
 {
+
     static bool validLocalNodeIndex(int idx, const vector<double>& xyz)
     {
         return idx >= 0 && (size_t)idx < xyz.size() / 3u;
     }
+
     static double tetAbsVolume(const vector<double>& xyz,
                                int n0, int n1, int n2, int n3)
     {
@@ -44,12 +48,14 @@ struct ParticleInitialLocalOps
         const double crz = bx * cy - by * cx;
         return std::fabs(ax * crx + ay * cry + az * crz) / 6.0;
     }
+
     static double positiveUniform(std::uniform_real_distribution<double>& dis,
                                   std::mt19937& gen)
     {
         const double r = dis(gen);
         return (r > 0.0) ? r : 1.0e-300;
     }
+
     static void randomBarycentric4(std::uniform_real_distribution<double>& dis,
                                    std::mt19937& gen,
                                    double& a,
@@ -316,6 +322,11 @@ MeshparticalInitial :: MeshparticalInitial(meshImport *mesh, meshMessage mess, M
              << " rank=" << this->rank << endl;
         return;
     }
+    if (!transfer.broadcastCellWeights(this->cellNeffByGlobal))
+    {
+        cout << "MESH_PARTITION_INITIAL_WEIGHT_BCAST_FAIL" << " rank=" << this->rank << endl;
+        return;
+    }
     this->partitionReady = true;
     if(active)
     {
@@ -328,6 +339,17 @@ MeshparticalInitial :: MeshparticalInitial(meshImport *mesh, meshMessage mess, M
             if(Npc_exa > 0 && !Np_tri.empty()) { meshfillpar(i, Np_tri); }
         }
     }
+}
+
+double MeshparticalInitial::particleWeight(int globalCell) const
+{
+    if (globalCell >= 0 && globalCell < (int)this->cellNeffByGlobal.size())
+    {
+        const double weight = this->cellNeffByGlobal[(size_t)globalCell];
+        if (weight > 0.0 && std::isfinite(weight))
+            return weight;
+    }
+    return this->mess.Neff;
 }
 
 void MeshparticalInitial ::module_variables()
@@ -408,6 +430,7 @@ void MeshparticalInitial :: CreateParticlesnode(int j,int i, int index0, int ind
         parts.p_rank_serial = this->c_rank;
         parts.p_mesh_serial = localCell;
         parts.dt_left = 0.0;
+        parts.p_weight_origin_gid = -1;
         bucket.push_back(parts);
         if (gid >= 0 && gid < (int)this->cell_particle_reserve_hint.size())
         {
@@ -436,6 +459,7 @@ void MeshparticalInitial :: CreateParticlesnode(int j,int i, int index0, int ind
         parts.p_rank_serial = this->c_rank;
         parts.p_mesh_serial = localCell;
         parts.dt_left = 0.0;
+        parts.p_weight_origin_gid = -1;
         bucket.push_back(parts);
         if (gid >= 0 && gid < (int)this->cell_particle_reserve_hint.size())
         {
@@ -578,7 +602,7 @@ int MeshparticalInitial :: Iround(double x)
 }
 
 void MeshparticalInitial::adjust_particles(vector<double>& regions, int size, int delta) {
-    static std::mt19937 rng(std::random_device{}());
+    static std::mt19937 rng(RANDOM_SEED + static_cast<unsigned int>(rank) + 0x9e3779b9u);
     const int abs_delta = std::abs(delta);
     const bool add = delta > 0;
     if(abs_delta > size) { 
